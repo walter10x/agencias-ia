@@ -1,0 +1,1 @@
+"""Módulo de plantillas de servicio predefinidas."""

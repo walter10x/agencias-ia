@@ -1,0 +1,176 @@
+"""Supabase adapter for ClientRepository port (DRIVEN ADAPTER)."""
+
+from __future__ import annotations
+
+import asyncio
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
+import httpx
+from app.infrastructure.http.supabase_client import SupabaseHttpClient
+
+from app.domain.client.entity import Client
+from app.domain.client.repository import ClientRepository
+from app.domain.shared.errors import DomainError, InvalidClientError
+from app.domain.shared.value_objects import BusinessType, ClientId, WhatsAppNumber
+
+
+class SupabaseClientRepository(ClientRepository):
+    """Supabase implementation of ClientRepository.
+
+    Uses supabase-py sync client wrapped in asyncio.to_thread.
+    """
+
+    TABLE = "clients"
+
+    def __init__(self, client: SupabaseHttpClient) -> None:
+        self._db = client
+
+    # ------------------------------------------------------------------
+    # Port methods
+    # ------------------------------------------------------------------
+
+    async def save(self, client: Client) -> None:
+        """Insert or update a Client (UPSERT by id)."""
+        row = self._client_to_row(client)
+        try:
+            await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .upsert(row, on_conflict="id")
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+
+    async def find_by_id(self, client_id: ClientId) -> Optional[Client]:
+        """Find a client by its ClientId. Returns None if not found."""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .eq("id", str(client_id))
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_client(result.data[0])
+
+    async def find_by_whatsapp(self, number: str) -> Optional[Client]:
+        """Find a client by WhatsApp number. Validates format first."""
+        self._validate_whatsapp(number)
+
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .eq("whatsapp_number", number)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_client(result.data[0])
+
+    async def list_active(self, limit: int = 50, offset: int = 0) -> list[Client]:
+        """List active clients with pagination."""
+        if limit < 1:
+            raise InvalidClientError("limit must be >= 1")
+        if offset < 0:
+            raise InvalidClientError("offset must be >= 0")
+
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .eq("is_active", True)
+                .order("created_at", desc=True)
+                .limit(limit)
+                .offset(offset)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return []
+
+        return [self._row_to_client(row) for row in result.data]
+
+    # ------------------------------------------------------------------
+    # Private mappers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _client_to_row(client: Client) -> dict:
+        """Map a Client entity to a Supabase row dict."""
+        return {
+            "id": str(client.id),
+            "name": client.name,
+            "business_type": str(client.business_type),
+            "whatsapp_number": str(client.whatsapp_number),
+            "is_active": client.is_active,
+            "created_at": client.created_at.isoformat(),
+            "updated_at": client.updated_at.isoformat(),
+        }
+
+    @staticmethod
+    def _row_to_client(row: dict) -> Client:
+        """Reconstruct a Client entity from a Supabase row dict."""
+        client = Client(
+            id=UUID(row["id"]),
+            name=row["name"],
+            business_type=BusinessType(row["business_type"]),
+            whatsapp_number=WhatsAppNumber(row["whatsapp_number"]),
+            is_active=row["is_active"],
+        )
+        client.created_at = datetime.fromisoformat(row["created_at"])
+        client.updated_at = datetime.fromisoformat(row["updated_at"])
+        return client
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_whatsapp(number: str) -> None:
+        """Raise InvalidClientError if the WhatsApp format is invalid."""
+        try:
+            WhatsAppNumber(number)
+        except ValueError as exc:
+            raise InvalidClientError(str(exc)) from exc
+
+    @staticmethod
+    def _raise_domain_error(exc: Exception) -> None:
+        """Map infrastructure exceptions to domain errors."""
+        import json
+
+        message = str(exc)
+
+        # Try to parse Supabase PostgREST error from message body
+        pg_code = ""
+        try:
+            if "Supabase error:" in message:
+                body_str = message.split("Supabase error:", 1)[1].strip()
+                body = json.loads(body_str)
+                pg_code = body.get("code", "")
+                message = body.get("message", message)
+        except (json.JSONDecodeError, IndexError):
+            pass
+
+        # PostgreSQL unique_violation (23505) → duplicate WhatsApp
+        if pg_code == "23505":
+            raise InvalidClientError("WhatsApp number already registered") from exc
+
+        # Connection / timeout errors
+        if isinstance(exc, (httpx.ConnectError, httpx.TimeoutException)):
+            raise DomainError("Database connection failed") from exc
+        if "connection" in message.lower() or "timeout" in message.lower():
+            raise DomainError("Database connection failed") from exc
+
+        raise DomainError(f"Database error: {message}") from exc

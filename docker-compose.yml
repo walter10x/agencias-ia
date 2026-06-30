@@ -1,0 +1,97 @@
+services:
+  # ============================================================
+  # Frontend Dashboard - Panel de control (React + Vite + nginx)
+  # ============================================================
+  frontend:
+    build: ./frontend-dashboard
+    container_name: agencia-frontend
+    ports:
+      - "5050:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # Backend Core - Motor de IA (FastAPI + LangGraph)
+  # ============================================================
+  backend:
+    build: ./backend-core
+    container_name: agencia-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend-core/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend-core/app:/app/app
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # Redis - Caché y broker de mensajes para Celery
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: agencia-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # Evolution API - WhatsApp Gateway (Self-hosted)
+  # ============================================================
+  # n8n - Automatización de flujos secundarios
+  # ============================================================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: agencia-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      - n8n-data:/home/node/.n8n
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # Celery Worker - Tareas asíncronas (procesar mensajes, PDFs)
+  # ============================================================
+  celery-worker:
+    build: ./backend-core
+    container_name: agencia-celery
+    command: celery -A app.infrastructure.config.celery_app worker --loglevel=info
+    env_file:
+      - ./backend-core/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend-core/app:/app/app
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+volumes:
+  n8n-data:
+
+networks:
+  agencia-net:
+    driver: bridge
