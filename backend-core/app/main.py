@@ -9,6 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from app.infrastructure.config.settings import get_settings
 from app.infrastructure.http.agent_router import router as agent_router
+from app.infrastructure.http.auth_router import router as auth_router
 from app.infrastructure.http.client_router import router as client_router
 from app.infrastructure.http.conversation_router import router as conversation_router
 from app.infrastructure.http.email_router import router as email_router
@@ -59,6 +60,7 @@ async def health_check() -> dict[str, str]:
 register_error_handlers(app)
 
 # Register routers
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(client_router, prefix="/api/v1/clients", tags=["Clients"])
 app.include_router(agent_router, prefix="/api/v1/agents", tags=["Agents"])
 app.include_router(conversation_router, prefix="/api/v1/conversations", tags=["Conversations"])

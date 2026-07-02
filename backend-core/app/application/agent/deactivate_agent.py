@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from app.application.dtos import AgentOutput, DeactivateAgentInput, agent_to_output
 from app.domain.agent.repository import AgentRepository
-from app.domain.shared.errors import AgentNotFoundError
-from app.domain.shared.value_objects import AgentId
+from app.domain.shared.errors import AgentNotFoundError, ForbiddenError
+from app.domain.shared.value_objects import AgentId, ClientId
 
 
 class DeactivateAgentUseCase:
@@ -14,11 +14,13 @@ class DeactivateAgentUseCase:
     def __init__(self, agent_repo: AgentRepository) -> None:
         self._repo = agent_repo
 
-    async def execute(self, input: DeactivateAgentInput) -> AgentOutput:
+    async def execute(self, input: DeactivateAgentInput, client_id: str | None = None) -> AgentOutput:
         agent_id = AgentId.from_string(input.agent_id)
         agent = await self._repo.find_by_id(agent_id)
         if agent is None:
             raise AgentNotFoundError(f"Agent not found: {agent_id}")
+        if client_id is not None and agent.client_id != ClientId.from_string(client_id):
+            raise ForbiddenError("Agent does not belong to this client")
 
         agent.deactivate()
         await self._repo.save(agent)

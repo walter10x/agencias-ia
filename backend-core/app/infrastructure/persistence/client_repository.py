@@ -13,7 +13,7 @@ from app.infrastructure.http.supabase_client import SupabaseHttpClient
 from app.domain.client.entity import Client
 from app.domain.client.repository import ClientRepository
 from app.domain.shared.errors import DomainError, InvalidClientError
-from app.domain.shared.value_objects import BusinessType, ClientId, WhatsAppNumber
+from app.domain.shared.value_objects import BusinessType, ClientId, Email, PasswordHash, WhatsAppNumber
 
 
 class SupabaseClientRepository(ClientRepository):
@@ -79,6 +79,23 @@ class SupabaseClientRepository(ClientRepository):
             return None
         return self._row_to_client(result.data[0])
 
+    async def find_by_email(self, email: Email) -> Optional[Client]:
+        """Find a client by email. Returns None if not found."""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .eq("email", str(email))
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_client(result.data[0])
+
     async def list_active(self, limit: int = 50, offset: int = 0) -> list[Client]:
         """List active clients with pagination."""
         if limit < 1:
@@ -109,7 +126,7 @@ class SupabaseClientRepository(ClientRepository):
     @staticmethod
     def _client_to_row(client: Client) -> dict:
         """Map a Client entity to a Supabase row dict."""
-        return {
+        row: dict[str, object] = {
             "id": str(client.id),
             "name": client.name,
             "business_type": str(client.business_type),
@@ -118,6 +135,16 @@ class SupabaseClientRepository(ClientRepository):
             "created_at": client.created_at.isoformat(),
             "updated_at": client.updated_at.isoformat(),
         }
+        if client.email is not None:
+            row["email"] = str(client.email)
+        if client.password_hash is not None:
+            row["password_hash"] = str(client.password_hash)
+        row["role"] = client.role.value
+        row["status"] = client.status.value
+        row["phone_number_id"] = client.phone_number_id
+        row["whatsapp_connected"] = client.whatsapp_connected
+        row["plan"] = client.plan
+        return row
 
     @staticmethod
     def _row_to_client(row: dict) -> Client:
@@ -129,6 +156,22 @@ class SupabaseClientRepository(ClientRepository):
             whatsapp_number=WhatsAppNumber(row["whatsapp_number"]),
             is_active=row["is_active"],
         )
+        if row.get("email"):
+            object.__setattr__(client, "email", Email(row["email"]))
+        if row.get("password_hash"):
+            object.__setattr__(client, "password_hash", PasswordHash(row["password_hash"]))
+        if row.get("role"):
+            from app.domain.client.enums import ClientRole
+            client.role = ClientRole(row["role"])
+        if row.get("status"):
+            from app.domain.client.enums import ClientStatus
+            client.status = ClientStatus(row["status"])
+        if row.get("phone_number_id"):
+            client.phone_number_id = str(row["phone_number_id"])
+        if row.get("whatsapp_connected"):
+            client.whatsapp_connected = bool(row["whatsapp_connected"])
+        if row.get("plan"):
+            client.plan = str(row["plan"])
         client.created_at = datetime.fromisoformat(row["created_at"])
         client.updated_at = datetime.fromisoformat(row["updated_at"])
         return client

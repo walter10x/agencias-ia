@@ -12,7 +12,8 @@ from app.application.dtos import (
 from app.application.feedback.create_feedback import CreateFeedbackUseCase
 from app.application.feedback.get_feedback_stats import GetFeedbackStatsUseCase
 from app.application.feedback.list_feedback import ListFeedbackUseCase
-from app.infrastructure.http.dependencies import get_feedback_repo
+from app.application.dtos import CurrentClientOutput
+from app.infrastructure.http.dependencies import get_current_client, get_feedback_repo
 from app.infrastructure.http.schemas import (
     FeedbackCreateRequest,
     FeedbackListResponse,
@@ -28,11 +29,12 @@ router = APIRouter()
 @router.post("", response_model=FeedbackResponse, status_code=201)
 async def create_feedback(
     body: FeedbackCreateRequest,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseFeedbackRepository = Depends(get_feedback_repo),
 ):
     uc = CreateFeedbackUseCase(repo=repo)
     dto = CreateFeedbackInput(
-        client_id=body.client_id,
+        client_id=current_client.client_id,
         rating=body.rating,
         lead_id=body.lead_id,
         conversation_id=body.conversation_id,
@@ -45,14 +47,14 @@ async def create_feedback(
 # E2: GET / — list feedbacks
 @router.get("", response_model=FeedbackListResponse)
 async def list_feedback(
-    client_id: str = Query(..., description="Client UUID"),
+    current_client: CurrentClientOutput = Depends(get_current_client),
     limit: int = Query(20, ge=1, le=200, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     repo: SupabaseFeedbackRepository = Depends(get_feedback_repo),
 ):
     uc = ListFeedbackUseCase(repo=repo)
     dto = ListFeedbackInput(
-        client_id=client_id,
+        client_id=current_client.client_id,
         limit=limit,
         offset=offset,
     )
@@ -66,9 +68,9 @@ async def list_feedback(
 # E3: GET /stats — feedback statistics
 @router.get("/stats", response_model=FeedbackStatsResponse)
 async def get_feedback_stats(
-    client_id: str = Query(..., description="Client UUID"),
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseFeedbackRepository = Depends(get_feedback_repo),
 ):
     uc = GetFeedbackStatsUseCase(repo=repo)
-    dto = GetFeedbackStatsInput(client_id=client_id)
+    dto = GetFeedbackStatsInput(client_id=current_client.client_id)
     return FeedbackStatsResponse.model_validate(await uc.execute(dto))

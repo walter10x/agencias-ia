@@ -11,7 +11,8 @@ from app.application.dtos import (
 )
 from app.application.email.get_email_stats import GetEmailStatsUseCase
 from app.application.email.send_email import SendEmailUseCase
-from app.infrastructure.http.dependencies import get_email_repo
+from app.application.dtos import CurrentClientOutput
+from app.infrastructure.http.dependencies import get_current_client, get_email_repo
 from app.infrastructure.http.schemas import (
     EmailLogResponse,
     EmailListResponse,
@@ -27,11 +28,12 @@ router = APIRouter()
 @router.post("/send", response_model=EmailSendResponse, status_code=201)
 async def send_email(
     body: EmailSendRequest,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseEmailRepository = Depends(get_email_repo),
 ):
     uc = SendEmailUseCase(repo=repo)
     dto = SendEmailInput(
-        client_id=body.client_id,
+        client_id=current_client.client_id,
         to_email=body.to_email,
         rubro_slug=body.rubro_slug,
         sequence_number=body.sequence_number,
@@ -45,14 +47,14 @@ async def send_email(
 
 @router.get("", response_model=EmailListResponse)
 async def list_emails(
-    client_id: str = Query(..., description="Client UUID"),
+    current_client: CurrentClientOutput = Depends(get_current_client),
     lead_id: str | None = Query(None, description="Filter by lead UUID"),
     limit: int = Query(20, ge=1, le=200, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     repo: SupabaseEmailRepository = Depends(get_email_repo),
 ):
     dto = ListEmailsInput(
-        client_id=client_id,
+        client_id=current_client.client_id,
         lead_id=lead_id,
         limit=limit,
         offset=offset,
@@ -72,11 +74,11 @@ async def list_emails(
 
 @router.get("/stats", response_model=EmailStatsResponse)
 async def get_email_stats(
-    client_id: str = Query(..., description="Client UUID"),
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseEmailRepository = Depends(get_email_repo),
 ):
     uc = GetEmailStatsUseCase(repo=repo)
-    dto = GetEmailStatsInput(client_id=client_id)
+    dto = GetEmailStatsInput(client_id=current_client.client_id)
     return EmailStatsResponse.model_validate(await uc.execute(dto))
 
 

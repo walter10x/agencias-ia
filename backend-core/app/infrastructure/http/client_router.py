@@ -1,9 +1,12 @@
-"""HTTP Router: Client endpoints."""
+"""HTTP Router: Client endpoints (CRUD + Admin approve/reject/disconnect)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.application.auth.approve_client import ApproveClientUseCase
+from app.application.auth.disconnect_whatsapp import DisconnectWhatsappUseCase
+from app.application.auth.reject_client import RejectClientUseCase
 from app.application.agent.create_agent import CreateAgentUseCase
 from app.application.agent.list_agents import ListAgentsByClientUseCase
 from app.application.client.create_client import CreateClientUseCase
@@ -12,17 +15,28 @@ from app.application.client.get_client import GetClientUseCase
 from app.application.client.list_clients import ListClientsUseCase
 from app.application.client.update_client import UpdateClientUseCase
 from app.application.dtos import (
+    AdminClientOutput,
     AgentToolInput,
+    ApproveClientInput,
     CreateAgentInput,
     CreateClientInput,
+    CurrentClientOutput,
     DeactivateClientInput,
+    DisconnectWhatsappInput,
     GetClientInput,
     ListAgentsByClientInput,
     ListClientsInput,
+    RejectClientInput,
     UpdateClientInput,
 )
-from app.infrastructure.http.dependencies import get_agent_repo, get_client_repo
+from app.domain.shared.errors import ForbiddenError, InvalidClientError
+from app.infrastructure.http.dependencies import (
+    get_agent_repo,
+    get_client_repo,
+    require_superadmin,
+)
 from app.infrastructure.http.schemas import (
+    AdminClientResponse,
     AgentCreateRequest,
     AgentListResponse,
     AgentResponse,
@@ -150,3 +164,69 @@ async def list_agents_by_client(
         items=[agent_output_to_response(o) for o in outputs],
         count=len(outputs),
     )
+
+
+# ============================================================================
+# Admin endpoints (require superadmin)
+# ============================================================================
+
+
+def _admin_output_to_response(output: AdminClientOutput) -> AdminClientResponse:
+    return AdminClientResponse(
+        id=output.id,
+        email=output.email,
+        name=output.name,
+        role=output.role,
+        status=output.status,
+        is_active=output.is_active,
+        whatsapp_number=output.whatsapp_number,
+        whatsapp_connected=output.whatsapp_connected,
+        plan=output.plan,
+        created_at=output.created_at,
+        updated_at=output.updated_at,
+    )
+
+
+@router.post("/{client_id}/approve", response_model=AdminClientResponse)
+async def approve_client(
+    client_id: str,
+    current: CurrentClientOutput = Depends(require_superadmin),
+    repo: SupabaseClientRepository = Depends(get_client_repo),
+) -> AdminClientResponse:
+    uc = ApproveClientUseCase(repo)
+    inp = ApproveClientInput(client_id=client_id)
+    try:
+        output = await uc.execute(inp, current_role=current.role)
+    except InvalidClientError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _admin_output_to_response(output)
+
+
+@router.post("/{client_id}/reject", response_model=AdminClientResponse)
+async def reject_client(
+    client_id: str,
+    current: CurrentClientOutput = Depends(require_superadmin),
+    repo: SupabaseClientRepository = Depends(get_client_repo),
+) -> AdminClientResponse:
+    uc = RejectClientUseCase(repo)
+    inp = RejectClientInput(client_id=client_id)
+    try:
+        output = await uc.execute(inp, current_role=current.role)
+    except InvalidClientError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _admin_output_to_response(output)
+
+
+@router.post("/{client_id}/disconnect-whatsapp", response_model=AdminClientResponse)
+async def disconnect_whatsapp(
+    client_id: str,
+    current: CurrentClientOutput = Depends(require_superadmin),
+    repo: SupabaseClientRepository = Depends(get_client_repo),
+) -> AdminClientResponse:
+    uc = DisconnectWhatsappUseCase(repo)
+    inp = DisconnectWhatsappInput(client_id=client_id)
+    try:
+        output = await uc.execute(inp, current_role=current.role)
+    except InvalidClientError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _admin_output_to_response(output)
