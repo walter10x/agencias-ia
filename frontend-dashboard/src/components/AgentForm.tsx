@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Loader2, Plus, Trash2 } from "lucide-react";
 import { createAgent, updateAgent, type AgentData, type AgentToolData, type AgentCreateInput, type AgentUpdateInput } from "@/api/agent";
@@ -13,7 +13,7 @@ interface AgentFormProps {
 }
 
 interface ToolRow {
-  key: number;
+  key: string;
   name: string;
   description: string;
   endpoint: string;
@@ -24,10 +24,8 @@ interface FormErrors {
   personality?: string;
 }
 
-let toolKeyCounter = 0;
-
 function emptyTool(): ToolRow {
-  return { key: ++toolKeyCounter, name: "", description: "", endpoint: "" };
+  return { key: crypto.randomUUID(), name: "", description: "", endpoint: "" };
 }
 
 export default function AgentForm({ isOpen, onClose, clientId, agent, onSuccess }: AgentFormProps) {
@@ -37,9 +35,11 @@ export default function AgentForm({ isOpen, onClose, clientId, agent, onSuccess 
 
   const [name, setName] = useState(agent?.name ?? "");
   const [personality, setPersonality] = useState(agent?.personality ?? "");
+  const toolRef = useRef(0);
+  
   const [tools, setTools] = useState<ToolRow[]>(
     agent?.tools.length
-      ? agent.tools.map((t) => ({ ...t, key: ++toolKeyCounter }))
+      ? agent.tools.map((t) => ({ ...t, key: crypto.randomUUID() }))
       : [emptyTool()],
   );
   const [kbRefs, setKbRefs] = useState(agent?.knowledge_base_refs?.join(", ") ?? "");
@@ -101,14 +101,14 @@ export default function AgentForm({ isOpen, onClose, clientId, agent, onSuccess 
     setTools((prev) => [...prev, emptyTool()]);
   }
 
-  function removeTool(key: number) {
+  function removeTool(key: string) {
     setTools((prev) => {
       if (prev.length <= 1) return prev;
       return prev.filter((t) => t.key !== key);
     });
   }
 
-  function updateTool(key: number, field: keyof ToolRow, value: string) {
+  function updateTool(key: string, field: keyof ToolRow, value: string) {
     setTools((prev) => prev.map((t) => (t.key === key ? { ...t, [field]: value } : t)));
   }
 

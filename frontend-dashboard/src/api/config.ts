@@ -16,9 +16,15 @@ export class ApiError extends Error {
   }
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("auth_token");
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
+
 export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders(), ...options?.headers },
     ...options,
   });
 

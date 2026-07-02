@@ -156,25 +156,29 @@ export default function TemplateApplyPage() {
                 Herramientas ({template.tools_count})
               </h4>
               <div className="space-y-2">
-                {[].constructor.name === "Array" && // placeholder, tools_count is all we have from list endpoint
-                  Array.from({ length: template.tools_count }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center gap-3"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                        <Wrench size={14} className="text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-zinc-300 font-medium">
-                          Herramienta {i + 1}
-                        </p>
-                        <p className="text-xs text-zinc-500">
-                          Tool del asistente para {template.name.toLowerCase()}
-                        </p>
-                      </div>
+            <div>
+              <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Wrench size={12} />
+                Herramientas ({template.tools_count})
+              </h4>
+              <div className="space-y-2">
+                {template.tools_count > 0 && Array.from({ length: template.tools_count }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center gap-3"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                      <Wrench size={14} className="text-amber-400" />
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-sm text-zinc-300 font-medium">
+                        Herramienta {i + 1}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
               </div>
             </div>
           </div>
