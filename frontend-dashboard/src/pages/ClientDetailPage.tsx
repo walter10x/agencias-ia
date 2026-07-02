@@ -147,11 +147,11 @@ export default function ClientDetailPage() {
           <h3 className="text-lg font-semibold text-white mb-2">Cliente no encontrado</h3>
           <p className="text-sm text-zinc-500 mb-6">El cliente que buscas no existe o fue eliminado.</p>
           <button
-            onClick={() => navigate("/clients")}
-            className="px-4 py-2 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
-          >
-            Volver a clientes
-          </button>
+              onClick={() => navigate("/app/clients")}
+              className="px-4 py-2 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
+            >
+              Volver a Clientes
+            </button>
         </div>
       </div>
     );

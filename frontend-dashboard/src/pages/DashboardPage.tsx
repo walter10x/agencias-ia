@@ -114,7 +114,7 @@ export default function DashboardPage() {
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             <button
-              onClick={() => navigate("/clients")}
+              onClick={() => navigate("/app/clients")}
               className="px-4 py-2 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
             >
               Crear Cliente

@@ -1,10 +1,10 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode, useRef } from "react";
 import { CheckCircle, XCircle, X } from "lucide-react";
 
 type ToastType = "success" | "error";
 
 interface Toast {
-  id: number;
+  id: string;
   type: ToastType;
   message: string;
 }
@@ -14,8 +14,6 @@ interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
-
-let nextId = 0;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);

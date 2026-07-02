@@ -4,8 +4,12 @@ import { lazy, Suspense, useState } from "react";
 import { Menu, X } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
+import { AuthProvider } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
+const HomePage = lazy(() => import("@/pages/HomePage"));
 const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/RegisterPage"));
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const ClientsPage = lazy(() => import("@/pages/ClientsPage"));
 const ClientDetailPage = lazy(() => import("@/pages/ClientDetailPage"));
@@ -36,17 +40,15 @@ function Loading() {
   );
 }
 
-function AdminLayout() {
+function AppLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-black text-white overflow-hidden">
-      {/* Desktop Sidebar */}
       <div className="hidden lg:block h-full">
         <Sidebar />
       </div>
 
-      {/* Mobile menu button */}
       <div className="lg:hidden absolute top-4 left-4 z-50">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -56,7 +58,6 @@ function AdminLayout() {
         </button>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex">
           <Sidebar
@@ -67,7 +68,6 @@ function AdminLayout() {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
@@ -85,25 +85,32 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
-          <Suspense fallback={<Loading />}>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/landing/:slug" element={<LandingPage />} />
-              <Route element={<AdminLayout />}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/clients" element={<ClientsPage />} />
-                <Route path="/clients/:id" element={<ClientDetailPage />} />
-                <Route path="/agents" element={<AgentsPage />} />
-                <Route path="/agents/:id" element={<AgentDetailPage />} />
-                <Route path="/conversations" element={<ConversationsPage />} />
-                <Route path="/conversations/:id" element={<ConversationDetailPage />} />
-                <Route path="/leads" element={<LeadsPage />} />
-                <Route path="/leads/:id" element={<LeadDetailPage />} />
-                <Route path="/templates" element={<TemplatesPage />} />
-                <Route path="/templates/:slug/apply" element={<TemplateApplyPage />} />
-              </Route>
-            </Routes>
-          </Suspense>
+          <AuthProvider>
+            <Suspense fallback={<Loading />}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/landing/:slug" element={<LandingPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AppLayout />}>
+                    <Route path="/app" element={<DashboardPage />} />
+                    <Route path="/app/clients" element={<ClientsPage />} />
+                    <Route path="/app/clients/:id" element={<ClientDetailPage />} />
+                    <Route path="/app/agents" element={<AgentsPage />} />
+                    <Route path="/app/agents/:id" element={<AgentDetailPage />} />
+                    <Route path="/app/conversations" element={<ConversationsPage />} />
+                    <Route path="/app/conversations/:id" element={<ConversationDetailPage />} />
+                    <Route path="/app/leads" element={<LeadsPage />} />
+                    <Route path="/app/leads/:id" element={<LeadDetailPage />} />
+                    <Route path="/app/templates" element={<TemplatesPage />} />
+                    <Route path="/app/templates/:slug/apply" element={<TemplateApplyPage />} />
+                    <Route path="/app/profile" element={null} />
+                  </Route>
+                </Route>
+              </Routes>
+            </Suspense>
+          </AuthProvider>
         </BrowserRouter>
       </ToastProvider>
     </QueryClientProvider>

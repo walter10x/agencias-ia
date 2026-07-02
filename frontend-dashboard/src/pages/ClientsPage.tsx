@@ -28,7 +28,7 @@ export default function ClientsPage() {
   });
 
   const totalPages = clientsQuery.data
-    ? (clientsQuery.data.count < PAGE_SIZE ? page : page + 1)
+    ? Math.ceil(clientsQuery.data.count / PAGE_SIZE)
     : 0;
 
   function handleSearch() {
