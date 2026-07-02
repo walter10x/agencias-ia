@@ -100,3 +100,43 @@ class LandingRateLimitError(DomainError):
 class EmailError(DomainError):
     """Error cuando falla el envio de email."""
     pass
+
+
+# ============================================================================
+# Auth — Fase 1 multi-tenant
+# ============================================================================
+
+
+class AuthError(DomainError):
+    """Error base para todos los errores de autenticación y autorización."""
+    pass
+
+
+class InvalidCredentialsError(AuthError):
+    """Email o contraseña inválidos en login (401)."""
+    pass
+
+
+class EmailAlreadyRegisteredError(AuthError):
+    """Email ya está registrado por otro cliente (409)."""
+    pass
+
+
+class ClientNotApprovedError(AuthError):
+    """El cliente está pendiente de aprobación y no puede loguearse (403)."""
+    pass
+
+
+class WeakPasswordError(DomainError):
+    """Contraseña demasiado corta o inválida (400)."""
+    pass
+
+
+class UnauthorizedError(AuthError):
+    """Token JWT ausente, inválido o expirado (401)."""
+    pass
+
+
+class ForbiddenError(AuthError):
+    """El usuario autenticado no tiene rol suficiente (403)."""
+    pass

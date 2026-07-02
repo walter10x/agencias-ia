@@ -5,6 +5,8 @@ import uuid
 import pytest
 
 from app.domain.client.entity import Client
+from app.domain.client.enums import ClientRole, ClientStatus
+from app.domain.shared.errors import InvalidClientError
 from app.domain.shared.value_objects import BusinessType, WhatsAppNumber
 
 
@@ -71,3 +73,75 @@ class TestClientEquality:
         a = Client(name="A", business_type=BusinessType("otro"))
         b = Client(name="A", business_type=BusinessType("otro"))
         assert a != b
+
+
+class TestClientAuthDomain:
+    def test_client_approve_changes_status_pending_to_approved(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        client.approve()
+        assert client.status == ClientStatus.APPROVED
+
+    def test_client_approve_when_already_approved_raises(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        client.approve()
+        with pytest.raises(InvalidClientError):
+            client.approve()
+
+    def test_client_reject_changes_status_pending_to_inactive(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        client.reject()
+        assert client.status == ClientStatus.INACTIVE
+        assert client.is_active is False
+
+    def test_client_reject_when_not_pending_raises(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        client.approve()
+        with pytest.raises(InvalidClientError):
+            client.reject()
+
+    def test_client_connect_whatsapp_when_approved_sets_phone_number_id(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        client.approve()
+        client.connect_whatsapp("phid_123")
+        assert client.phone_number_id == "phid_123"
+        assert client.whatsapp_connected is True
+
+    def test_client_connect_whatsapp_when_pending_raises(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        with pytest.raises(InvalidClientError):
+            client.connect_whatsapp("x")
+
+    def test_client_disconnect_whatsapp_clears_phone_number_id(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        client.approve()
+        client.connect_whatsapp("phid_abc")
+        client.disconnect_whatsapp()
+        assert client.phone_number_id == ""
+        assert client.whatsapp_connected is False
+
+    def test_client_can_login_when_approved_or_active_true(self) -> None:
+        c1 = Client(name="C", business_type=BusinessType("otro"))
+        c1.approve()
+        assert c1.can_login() is True
+
+        c2 = Client(name="C2", business_type=BusinessType("otro"))
+        c2.approve()
+        c2.status = ClientStatus.ACTIVE
+        assert c2.can_login() is True
+
+    def test_client_cannot_login_when_pending(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        assert client.can_login() is False
+
+    def test_client_cannot_login_when_inactive(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        client.reject()
+        assert client.can_login() is False
+
+    def test_client_default_role_is_client_admin(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        assert client.role == ClientRole.CLIENT_ADMIN
+
+    def test_client_default_status_is_pending(self) -> None:
+        client = Client(name="C", business_type=BusinessType("otro"))
+        assert client.status == ClientStatus.PENDING

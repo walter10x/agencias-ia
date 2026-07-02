@@ -12,10 +12,11 @@ from app.application.conversation.get_conversation_stats import (
 )
 from app.application.conversation.list_conversations import ListConversationsUseCase
 from app.application.dtos import (
+    CurrentClientOutput,
     GetConversationMessagesInput,
     ListConversationsInput,
 )
-from app.infrastructure.http.dependencies import get_conversation_repo
+from app.infrastructure.http.dependencies import get_conversation_repo, get_current_client
 from app.infrastructure.http.schemas import (
     ConversationListResponse,
     ConversationMessagesResponse,
@@ -33,13 +34,15 @@ router = APIRouter()
 # E1: GET / — list conversations by client
 @router.get("", response_model=ConversationListResponse)
 async def list_conversations(
-    client_id: str = Query(..., description="Client ID to filter conversations"),
+    current_client: CurrentClientOutput = Depends(get_current_client),
     limit: int = Query(20, ge=1, le=200, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     repo: SupabaseConversationRepository = Depends(get_conversation_repo),
 ):
     uc = ListConversationsUseCase(repo=repo)
-    dto = ListConversationsInput(client_id=client_id, limit=limit, offset=offset)
+    dto = ListConversationsInput(
+        client_id=current_client.client_id, limit=limit, offset=offset,
+    )
     outputs, total = await uc.execute(dto)
     return ConversationListResponse(
         items=[ConversationResponse.model_validate(o) for o in outputs],
@@ -51,6 +54,7 @@ async def list_conversations(
 @router.get("/{conversation_id}/messages", response_model=ConversationMessagesResponse)
 async def get_conversation_messages(
     conversation_id: str,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseConversationRepository = Depends(get_conversation_repo),
 ):
     uc = GetConversationMessagesUseCase(repo=repo)
@@ -63,9 +67,10 @@ async def get_conversation_messages(
     )
 
 
-# E3: GET /stats — global conversation statistics
+# E3: GET /stats — conversation statistics by tenant
 @router.get("/stats", response_model=ConversationStatsResponse)
 async def get_conversation_stats(
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseConversationRepository = Depends(get_conversation_repo),
 ):
     uc = GetConversationStatsUseCase(repo=repo)

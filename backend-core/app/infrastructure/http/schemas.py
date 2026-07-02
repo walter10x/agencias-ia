@@ -412,3 +412,66 @@ class EmailStatsResponse(BaseModel):
     open_rate: float
     click_rate: float
     by_template: dict[str, int]
+
+
+# ============================================================================
+# Auth Schemas
+# ============================================================================
+
+
+class RegisterRequest(BaseModel):
+    email: str = Field(..., min_length=5, max_length=254, description="Email address")
+    password: str = Field(..., min_length=8, max_length=128, description="Password (min 8 chars)")
+    business_name: str = Field(..., min_length=1, max_length=200, description="Business name")
+    whatsapp_number: str = Field(..., min_length=10, description="WhatsApp number (digits only)")
+
+
+class RegisterResponse(BaseModel):
+    client_id: str
+    email: str
+    status: str
+    message: str
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., description="Email address")
+    password: str = Field(..., description="Password")
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    client_id: str
+    role: str
+    status: str
+
+
+class CurrentClientResponse(BaseModel):
+    client_id: str
+    email: str
+    name: str
+    role: str
+    status: str
+    whatsapp_number: str
+    whatsapp_connected: bool
+    plan: str
+    is_active: bool
+
+
+# ============================================================================
+# Admin Schemas
+# ============================================================================
+
+
+class AdminClientResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    status: str
+    is_active: bool
+    whatsapp_number: str
+    whatsapp_connected: bool
+    plan: str
+    created_at: str
+    updated_at: str

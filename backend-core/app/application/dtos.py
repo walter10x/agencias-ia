@@ -166,6 +166,23 @@ def client_to_output(client: Client) -> ClientOutput:
     )
 
 
+def client_to_admin_output(client: Client) -> AdminClientOutput:
+    """Map a Client entity to AdminClientOutput DTO."""
+    return AdminClientOutput(
+        id=str(client.id),
+        email=str(client.email) if client.email else "",
+        name=client.name,
+        role=client.role.value,
+        status=client.status.value,
+        is_active=client.is_active,
+        whatsapp_number=str(client.whatsapp_number),
+        whatsapp_connected=client.whatsapp_connected,
+        plan=client.plan,
+        created_at=client.created_at.isoformat(),
+        updated_at=client.updated_at.isoformat(),
+    )
+
+
 def agent_to_output(agent: Agent) -> AgentOutput:
     """Map an Agent entity to AgentOutput DTO."""
     return AgentOutput(
@@ -632,3 +649,87 @@ def email_log_to_output(log: EmailLog) -> EmailLogOutput:
         sent_at=log.sent_at.isoformat(),
         created_at=log.created_at.isoformat(),
     )
+
+
+# ============================================================================
+# Input DTOs — Auth
+# ============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class RegisterClientInput:
+    email: str
+    password: str
+    business_name: str
+    whatsapp_number: str
+
+
+@dataclass(frozen=True, slots=True)
+class RegisterClientOutput:
+    client_id: str
+    email: str
+    status: str
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class LoginClientInput:
+    email: str
+    password: str
+
+
+@dataclass(frozen=True, slots=True)
+class LoginClientOutput:
+    access_token: str
+    client_id: str
+    role: str
+    status: str
+    token_type: str = "bearer"
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentClientOutput:
+    client_id: str
+    email: str
+    name: str
+    role: str
+    status: str
+    whatsapp_number: str
+    whatsapp_connected: bool
+    plan: str
+    is_active: bool
+
+
+# ============================================================================
+# Input DTOs — Admin (approve/reject/disconnect-whatsapp)
+# ============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class ApproveClientInput:
+    client_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class RejectClientInput:
+    client_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class DisconnectWhatsappInput:
+    client_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AdminClientOutput:
+    id: str
+    email: str
+    name: str
+    role: str
+    status: str
+    is_active: bool
+    whatsapp_number: str
+    whatsapp_connected: bool
+    plan: str
+    created_at: str
+    updated_at: str

@@ -15,7 +15,8 @@ from app.application.dtos import (
     GetAgentInput,
     UpdateAgentInput,
 )
-from app.infrastructure.http.dependencies import get_agent_repo
+from app.application.dtos import CurrentClientOutput
+from app.infrastructure.http.dependencies import get_agent_repo, get_current_client
 from app.infrastructure.http.schemas import (
     AgentResponse,
     AgentUpdateRequest,
@@ -30,11 +31,12 @@ router = APIRouter()
 @router.delete("/{agent_id}/permanent", status_code=204)
 async def delete_agent(
     agent_id: str,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseAgentRepository = Depends(get_agent_repo),
 ):
     uc = DeleteAgentUseCase(agent_repo=repo)
     dto = DeleteAgentInput(agent_id=agent_id)
-    await uc.execute(dto)
+    await uc.execute(dto, client_id=current_client.client_id)
     return None
 
 
@@ -42,22 +44,24 @@ async def delete_agent(
 @router.delete("/{agent_id}", response_model=AgentResponse)
 async def deactivate_agent(
     agent_id: str,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseAgentRepository = Depends(get_agent_repo),
 ):
     uc = DeactivateAgentUseCase(agent_repo=repo)
     dto = DeactivateAgentInput(agent_id=agent_id)
-    return agent_output_to_response(await uc.execute(dto))
+    return agent_output_to_response(await uc.execute(dto, client_id=current_client.client_id))
 
 
 # E8: GET /{agent_id} — get agent by id
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(
     agent_id: str,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseAgentRepository = Depends(get_agent_repo),
 ):
     uc = GetAgentUseCase(agent_repo=repo)
     dto = GetAgentInput(agent_id=agent_id)
-    return agent_output_to_response(await uc.execute(dto))
+    return agent_output_to_response(await uc.execute(dto, client_id=current_client.client_id))
 
 
 # E10: PATCH /{agent_id} — update agent
@@ -65,6 +69,7 @@ async def get_agent(
 async def update_agent(
     agent_id: str,
     body: AgentUpdateRequest,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseAgentRepository = Depends(get_agent_repo),
 ):
     uc = UpdateAgentUseCase(agent_repo=repo)
@@ -82,4 +87,4 @@ async def update_agent(
         ),
         knowledge_base_refs=body.knowledge_base_refs,
     )
-    return agent_output_to_response(await uc.execute(dto))
+    return agent_output_to_response(await uc.execute(dto, client_id=current_client.client_id))

@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.domain.client.entity import Client
-from app.domain.shared.value_objects import ClientId
+from app.domain.shared.value_objects import ClientId, Email
 
 
 class ClientRepository(ABC):
@@ -34,4 +34,9 @@ class ClientRepository(ABC):
     @abstractmethod
     async def list_active(self, limit: int = 50, offset: int = 0) -> list[Client]:
         """Lista clientes activos con paginación."""
+        ...
+
+    @abstractmethod
+    async def find_by_email(self, email: Email) -> Optional[Client]:
+        """Busca un cliente por su email (para login y pre-check de duplicado)."""
         ...

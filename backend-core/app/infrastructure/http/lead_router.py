@@ -16,7 +16,8 @@ from app.application.lead.get_lead_stats import GetLeadStatsUseCase
 from app.application.lead.list_leads import ListLeadsUseCase
 from app.application.lead.send_message import SendProactiveMessageUseCase
 from app.application.lead.update_lead import UpdateLeadUseCase
-from app.infrastructure.http.dependencies import get_lead_repo
+from app.application.dtos import CurrentClientOutput
+from app.infrastructure.http.dependencies import get_current_client, get_lead_repo
 from app.infrastructure.http.schemas import (
     LeadCreateRequest,
     LeadListResponse,
@@ -34,11 +35,12 @@ router = APIRouter()
 @router.post("", response_model=LeadResponse, status_code=201)
 async def create_lead(
     body: LeadCreateRequest,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseLeadRepository = Depends(get_lead_repo),
 ):
     uc = CreateLeadUseCase(repo=repo)
     dto = CreateLeadInput(
-        client_id=body.client_id,
+        client_id=current_client.client_id,
         phone=body.phone,
         name=body.name,
         source=body.source,
@@ -50,7 +52,7 @@ async def create_lead(
 # E2: GET / — list leads with filters
 @router.get("", response_model=LeadListResponse)
 async def list_leads(
-    client_id: str = Query(..., description="Client UUID"),
+    current_client: CurrentClientOutput = Depends(get_current_client),
     status: str | None = Query(None, description="Filter by status"),
     limit: int = Query(20, ge=1, le=200, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
@@ -58,7 +60,7 @@ async def list_leads(
 ):
     uc = ListLeadsUseCase(repo=repo)
     dto = ListLeadsInput(
-        client_id=client_id,
+        client_id=current_client.client_id,
         status=status,
         limit=limit,
         offset=offset,
@@ -73,11 +75,11 @@ async def list_leads(
 # E3: GET /stats — lead statistics
 @router.get("/stats", response_model=LeadStatsResponse)
 async def get_lead_stats(
-    client_id: str = Query(..., description="Client UUID"),
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseLeadRepository = Depends(get_lead_repo),
 ):
     uc = GetLeadStatsUseCase(repo=repo)
-    dto = GetLeadStatsInput(client_id=client_id)
+    dto = GetLeadStatsInput(client_id=current_client.client_id)
     return LeadStatsResponse.model_validate(await uc.execute(dto))
 
 
@@ -86,6 +88,7 @@ async def get_lead_stats(
 async def update_lead(
     lead_id: str,
     body: LeadUpdateRequest,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseLeadRepository = Depends(get_lead_repo),
 ):
     uc = UpdateLeadUseCase(repo=repo)
@@ -105,10 +108,9 @@ async def update_lead(
 async def send_message(
     lead_id: str,
     body: SendMessageRequest,
+    current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseLeadRepository = Depends(get_lead_repo),
 ):
-    # Note: In production, message_sender would be injected via dependency
-    # For now we rely on the repository for the lead operations
     uc = SendProactiveMessageUseCase(
         lead_repo=repo,
         message_sender=None,  # type: ignore[arg-type]

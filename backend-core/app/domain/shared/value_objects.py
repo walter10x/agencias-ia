@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Self
 from uuid import UUID, uuid4
 
 from app.domain.shared.errors import InvalidClientError, InvalidAgentError
@@ -121,6 +120,47 @@ class LandingSlug:
     def from_name(cls, name: str) -> LandingSlug:
         """Genera un slug a partir del nombre del cliente."""
         return cls(value=slugify(name))
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class Email:
+    """Email validado y normalizado a lowercase.
+
+    Invariantes:
+    - Longitud entre 5 y 254 caracteres (RFC 5321)
+    - Formato válido según regex
+    - Normalizado a minúsculas y sin espacios
+    """
+
+    value: str
+
+    def __post_init__(self) -> None:
+        cleaned = self.value.strip()
+        if not 5 <= len(cleaned) <= 254:
+            raise ValueError("Invalid email format")
+        if not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", cleaned):
+            raise ValueError("Invalid email format")
+        object.__setattr__(self, "value", cleaned.lower())
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
+class PasswordHash:
+    """Hash bcrypt válido (prefijos $2a$, $2b$, $2y$ y longitud correcta)."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        if not self.value.startswith(("$2a$", "$2b$", "$2y$")):
+            raise ValueError("Invalid bcrypt hash")
+        if len(self.value) < 60:
+            raise ValueError("Invalid bcrypt hash")
+        object.__setattr__(self, "value", self.value)
 
     def __str__(self) -> str:
         return self.value

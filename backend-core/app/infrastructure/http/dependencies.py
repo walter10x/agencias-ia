@@ -1,16 +1,24 @@
-"""FastAPI dependency factories for repositories and external clients."""
+"""FastAPI dependency factories for repositories, security, and auth."""
 
 from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.infrastructure.config.settings import get_settings
+from app.application.auth.get_current_client import GetCurrentClientUseCase
+from app.application.dtos import CurrentClientOutput
+from app.domain.shared.errors import AuthError, UnauthorizedError
+from app.infrastructure.config.settings import Settings, get_settings
 from app.infrastructure.http.supabase_client import SupabaseHttpClient
 from app.infrastructure.persistence.agent_repository import SupabaseAgentRepository
 from app.infrastructure.persistence.client_repository import SupabaseClientRepository
 from app.infrastructure.persistence.conversation_repository import SupabaseConversationRepository
+from app.infrastructure.security.jwt_handler import JoseJwtHandler
+from app.infrastructure.security.password_hasher import BcryptPasswordHasher
+
+_security = HTTPBearer(auto_error=False)
 
 
 @lru_cache
@@ -74,3 +82,64 @@ def get_email_repo(
 ) -> "SupabaseEmailRepository":
     from app.infrastructure.persistence.email_repository import SupabaseEmailRepository
     return SupabaseEmailRepository(client)
+
+
+# ============================================================================
+# Auth dependencies
+# ============================================================================
+
+
+def get_password_hasher() -> BcryptPasswordHasher:
+    return BcryptPasswordHasher()
+
+
+def get_jwt_handler(settings: Settings = Depends(get_settings)) -> JoseJwtHandler:
+    return JoseJwtHandler(settings)
+
+
+async def get_current_client(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_security),
+    repo: SupabaseClientRepository = Depends(get_client_repo),
+    jwt_handler: JoseJwtHandler = Depends(get_jwt_handler),
+) -> CurrentClientOutput:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        payload = jwt_handler.decode(credentials.credentials)
+    except UnauthorizedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    client_id = payload.get("client_id")
+    if client_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+    uc = GetCurrentClientUseCase(repo)
+    try:
+        return await uc.execute(client_id)
+    except AuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        ) from exc
+
+
+async def require_superadmin(
+    current: CurrentClientOutput = Depends(get_current_client),
+) -> CurrentClientOutput:
+    if current.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Superadmin access required",
+        )
+    return current

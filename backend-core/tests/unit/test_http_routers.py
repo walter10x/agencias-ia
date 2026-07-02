@@ -67,9 +67,14 @@ from app.application.dtos import (
 #   app/infrastructure/http/error_handlers.py
 #   app/infrastructure/http/dependencies.py
 #   app/infrastructure/http/schemas.py
+from app.application.dtos import CurrentClientOutput
 from app.infrastructure.http.agent_router import router as agent_router  # noqa: F401
 from app.infrastructure.http.client_router import router as client_router  # noqa: F401
-from app.infrastructure.http.dependencies import get_agent_repo, get_client_repo  # noqa: F401
+from app.infrastructure.http.dependencies import (
+    get_agent_repo,
+    get_client_repo,
+    get_current_client,
+)
 from app.infrastructure.http.error_handlers import register_error_handlers  # noqa: F401
 
 # ============================================================================
@@ -170,6 +175,17 @@ def app(client_repo_mock: AsyncMock, agent_repo_mock: AsyncMock) -> FastAPI:
     # Override dependencies with mocks
     test_app.dependency_overrides[get_client_repo] = lambda: client_repo_mock
     test_app.dependency_overrides[get_agent_repo] = lambda: agent_repo_mock
+    test_app.dependency_overrides[get_current_client] = lambda: CurrentClientOutput(
+        client_id=str(CLIENT_UUID),
+        email="test@example.com",
+        name="Test Client",
+        role="client",
+        status="approved",
+        is_active=True,
+        whatsapp_number="573001234567",
+        whatsapp_connected=True,
+        plan="free",
+    )
 
     # Register health check (from main.py)
     @test_app.get("/health")
@@ -1209,6 +1225,7 @@ class TestDeleteAgentPermanentEndpoint:
         self, test_client: TestClient, agent_repo_mock: AsyncMock
     ) -> None:
         """EC-26: happy path → 204, empty body."""
+        agent_repo_mock.find_by_id.return_value = _make_agent()
         # delete() succeeds (no exception) → means agent existed and was deleted
 
         response = test_client.delete(f"/api/v1/agents/{AGENT_UUID}/permanent")
@@ -1221,9 +1238,7 @@ class TestDeleteAgentPermanentEndpoint:
         self, test_client: TestClient, agent_repo_mock: AsyncMock
     ) -> None:
         """EC-25: non-existent agent → 404."""
-        agent_repo_mock.delete.side_effect = AgentNotFoundError(
-            f"Agent not found: {NONEXISTENT_UUID}"
-        )
+        agent_repo_mock.find_by_id.return_value = None
 
         response = test_client.delete(f"/api/v1/agents/{NONEXISTENT_UUID}/permanent")
 

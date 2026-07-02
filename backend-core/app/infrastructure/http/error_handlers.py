@@ -12,6 +12,7 @@ from app.domain.shared.errors import (
     DomainError,
     EmailError,
     FeedbackNotFoundError,
+    ForbiddenError,
     InvalidAgentError,
     InvalidClientError,
     InvalidFeedbackError,
@@ -138,6 +139,13 @@ async def landing_rate_limit_handler(request: Request, exc: LandingRateLimitErro
     )
 
 
+async def forbidden_error_handler(request: Request, exc: ForbiddenError) -> JSONResponse:
+    return JSONResponse(
+        status_code=403,
+        content={"error_type": "forbidden", "detail": exc.message},
+    )
+
+
 async def email_error_handler(request: Request, exc: EmailError) -> JSONResponse:
     return JSONResponse(
         status_code=502,
@@ -166,5 +174,6 @@ def register_error_handlers(app):
     app.add_exception_handler(LandingNotFoundError, landing_not_found_handler)
     app.add_exception_handler(LandingInactiveError, landing_inactive_handler)
     app.add_exception_handler(LandingRateLimitError, landing_rate_limit_handler)
+    app.add_exception_handler(ForbiddenError, forbidden_error_handler)
     app.add_exception_handler(EmailError, email_error_handler)
     app.add_exception_handler(DomainError, domain_error_handler)
