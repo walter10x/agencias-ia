@@ -1,336 +1,237 @@
 # Guía de Conexión con Clientes — Plataforma Agencias-IA
 
-> **Objetivo**: Convertir este monorepo en una plataforma SaaS multi-tenant donde tus clientes se registran, tú les configuras agentes IA, y ellos gestionan su negocio desde un dashboard propio.
+> **Documento ÚNICO y DECISIVO** del proyecto.
+> Cualquier otro `.md` de planificación que no sea este está obsoleto.
+> **Reglas**: arquitectura hexagonal · TDD · archivos <500 líneas · funciones pequeñas · cero `Any`.
 
 ---
 
 ## 1. Visión General
 
-**Qué es**: Una plataforma web tipo "Meta Business para Agentes IA".  
+**Qué es**: Una plataforma SaaS multi-tenant tipo "Meta Business para Agentes IA".
 **Para quién**:
-- **Walter (tú)**: Superadmin. Creas clientes, configuras agentes IA, ves todo.
-- **Clientes (dueños de negocio)**: Se registran, conectan su WhatsApp, su agente IA atiende automático a SUS clientes finales.
+- **Walter (tú)**: Superadmin. Ves todos los clientes, configuras agentes, apruebas registros.
+- **Clientes (dueños de negocio)**: Llegan a la página pública, ven los servicios, se registran, conectan WhatsApp, y su agente IA atiende a SUS clientes finales.
 - **Clientes finales**: Gente que manda WhatsApp al negocio y el agente IA les responde.
 
-**Stack tecnológico**:
+**Stack**:
 ```
 Frontend → React 19 + Vite + Tailwind v4 + TanStack Query
-Backend  → FastAPI + LangGraph + Celery + Redis
+Backend  → FastAPI + LangGraph + Celery + Redis (arquitectura hexagonal)
 DB       → Supabase (PostgreSQL)
-WhatsApp → Evolution API (self-hosted)
-Auth     → JWT (ya configurado en backend)
-Deploy   → Docker Compose (todo en una VPS)
+WhatsApp → Meta Cloud API (WABA central de Walter)
+Auth     → JWT (bcrypt + python-jose)
+Deploy   → Docker Compose
+```
+
+**3 roles**: `superadmin` (Walter) · `client_admin` (dueño negocio) · `client_user` (empleado, previsto)
+
+---
+
+## 2. Estado Actual vs Meta Final
+
+| # | Módulo | Estado | Prioridad |
+|---|--------|:------:|:---------:|
+| 1 | **Chatbots Multicanal** (WhatsApp ✅, Telegram/Webchat ❌) | ⚠️ | 🔴 |
+| 2 | **Backend Auth Multi-Tenant** (registro, login, JWT, middleware, tenant filter) | ✅ Completo | 🟢 |
+| 3 | **CRUD Clientes + Agentes IA + Leads + Conversaciones** | ✅ Completo | 🟢 |
+| 4 | **Landing Pages Públicas** (para captar leads de los clientes) | ✅ Completo | 🟢 |
+| 5 | **Email Marketing** (30 templates HTML, API lista, 0 tests, sin scheduler) | ⚠️ Parcial | 🟡 |
+| 6 | **Frontend Auth** (página pública plataforma, registro, login real, rutas protegidas) | 🔴 **AHORA** | 🔴 |
+| 7 | **Panel Admin** (mejoras: badge pendientes, aprobar/rechazar desde UI) | ⏳ Existe, mejorar | 🟡 |
+| 8 | **Dashboard Cliente** (páginas existen, falta filtrar por rol JWT) | ⏳ Existe, mejorar | 🟡 |
+| 9 | **Onboarding Wizard** (perfil → rubro/templates → WhatsApp → activar) | ❌ No empezado | 🟢 |
+| 10 | **Facturación** (MercadoPago/Stripe, planes, límites) | ❌ No empezado | 🔵 |
+| 11 | **Deploy Producción** (VPS + dominio + HTTPS) | ❌ No empezado | ⚫ |
+
+---
+
+## 3. Fases de Implementación
+
+### ✅ FASE 1 — Backend Auth Multi-Tenant (COMPLETADA)
+
+**Qué se hizo**:
+- `PasswordHasher` bcrypt + tests (5 tests)
+- `JwtHandler` HS256 + tests (5 tests)
+- `RegisterClientUseCase` (hash + status=pending) + tests (12 tests)
+- `LoginClientUseCase` (valida pass + status gate) + tests
+- `GetCurrentClientUseCase` + tests
+- `auth_router.py` (`POST /auth/register`, `POST /auth/login`, `GET /auth/me`)
+- `dependencies.py`: `get_current_client`, `require_superadmin`
+- `client_router.py`: approve / reject / disconnect-whatsapp (solo superadmin)
+- Migración `002_auth_multi_tenant.sql` (password_hash, role, status, plan)
+- Filtro tenant en 5 routers (lead, conversation, agent, email, feedback)
+- Validación cross-tenant en agentes (403 si no coincide client_id)
+- 38 tests de auth + 11 tests de tenant isolation
+- `spec-auth.md` v1.3 completa
+- `ForbiddenError` → HTTP 403 handler
+
+**Total**: 631 tests passing, 19 pre-existing failing (17 whatsapp_webhook + 2 repo)
+
+---
+
+### 🔴 FASE 2 — Página Pública de la Plataforma + Frontend Auth (AHORA)
+
+**Objetivo**: Crear el punto de entrada donde los dueños de negocio descubren la plataforma, se registran e inician sesión.
+
+**Qué construir**:
+
+| Archivo | Tipo | Propósito |
+|---------|------|-----------|
+| `pages/HomePage.tsx` | Nuevo | Marketing page: hero, servicios, cómo funciona, CTA "Comenzar" |
+| `pages/RegisterPage.tsx` | Nuevo | Formulario: email + contraseña + nombre negocio + WhatsApp |
+| `context/AuthContext.tsx` | Nuevo | Estado global de auth (token, rol, client_id, login/logout) |
+| `hooks/useAuth.ts` | Nuevo | Hook para acceder al contexto |
+| `components/ProtectedRoute.tsx` | Nuevo | Guard → redirige a /login si no hay token |
+| `components/AdminRoute.tsx` | Nuevo | Guard → redirige si no es superadmin |
+| `components/ClientRoute.tsx` | Nuevo | Guard → redirige si no es client_admin |
+| `components/ClientLayout.tsx` | Nuevo | Layout del panel cliente (sidebar distinto) |
+| `pages/client/ClientDashboardPage.tsx` | Nuevo | Métricas del cliente |
+| `pages/client/ClientLeadsPage.tsx` | Nuevo | Leads del cliente |
+| `pages/client/ClientConversationsPage.tsx` | Nuevo | Conversaciones del cliente |
+| `pages/client/ProfilePage.tsx` | Nuevo | Editar datos del negocio |
+| `pages/client/ConnectWhatsAppPage.tsx` | Nuevo | Estado WhatsApp (no QR — Meta) |
+| `pages/client/AgentViewPage.tsx` | Nuevo | Agente solo lectura |
+| `api/auth.ts` | Nuevo | Funciones register, login, me |
+
+**Archivos a editar**:
+
+| Archivo | Cambio |
+|---------|--------|
+| `App.tsx` | Rutas `/` → HomePage, añadir `/register`, mover admin a `/app/*` |
+| `main.tsx` | Envolver en `AuthProvider` |
+| `api/config.ts` | Interceptor JWT en headers |
+| `components/Sidebar.tsx` | Menú condicional por rol (superadmin vs client_admin) |
+| `pages/LoginPage.tsx` | Conectar al backend real (`POST /auth/login`) |
+
+**API endpoints que consume**:
+- `POST /api/v1/auth/register` → `{ email, password, business_name, whatsapp_number }` → `{ client_id, email, status, message }`
+- `POST /api/v1/auth/login` → `{ email, password }` → `{ access_token, token_type, client_id, role, status }`
+- `GET /api/v1/auth/me` → Bearer → `{ client_id, email, name, role, status, whatsapp_number, whatsapp_connected, plan, is_active }`
+
+**Reglas**:
+- TDD: tests primero (vitest/react-testing-library)
+- Sin archivos > 500 líneas
+- Sin funciones > 40 líneas
+- Tipado fuerte, cero `Any`
+- Misma paleta visual: black bg, amber accents, zinc grays
+
+---
+
+### 🟠 FASE 3 — Panel Admin (mejoras)
+
+- ClientsPage: badge "Pendientes: N", botones aprobar/rechazar
+- ClientDetailPage: estado WhatsApp + botón desconectar (solo superadmin)
+- DashboardPage: métricas globales (clientes, aprobados, pendientes, WhatsApp conectados, mensajes hoy)
+
+### 🟡 FASE 4 — Dashboard Cliente
+
+- ClientLayout sidebar distinto (solo leads, conversaciones, perfil, agente read-only, billing)
+- Filtrar APIs por client_id del JWT
+- ProfilePage con onboarding wizard
+
+### 🟢 FASE 5 — Onboarding Wizard
+
+- Paso 1: perfil (rubro, descripción, horarios, dirección, logo)
+- Paso 2: confirmar WhatsApp conectado
+- Paso 3: elegir tono/idioma del agente
+- Paso 4: Walter activa
+
+### 🔵 FASE 6 — Facturación
+
+- MercadoPago o Stripe
+- Planes (Free/Pro/Enterprise)
+- Middleware de límites
+- BillingPage integrada
+
+### ⚫ FASE 7 — Deploy Producción
+
+- VPS + dominio + HTTPS (Traefik/Caddy + Let's Encrypt)
+- Separar contenedores con redes internas
+
+---
+
+## 4. Decisiónes Cerradas
+
+| # | Decisión | Valor |
+|---|----------|-------|
+| 1 | Auth | JWT + bcrypt (`passlib[bcrypt]`, `python-jose[cryptography]`) |
+| 2 | Roles | `superadmin` (Walter), `client_admin` (dueño), `client_user` (empleado, previsto) |
+| 3 | Registro público | 4 campos: email + contraseña + nombre negocio + WhatsApp |
+| 4 | Aprobación | Manual por Walter. `status`: `pending` → `approved` → `active` |
+| 5 | WhatsApp | Meta Cloud API (Graph v22.0). WABA central de Walter |
+| 6 | Prompt del agente | Lo configura Walter. El cliente ve (no edita) |
+| 7 | Supabase RLS | Deseable pero no bloquea avance |
+| 8 | Facturación | MercadoPago o Stripe (decidir en Fase 6) |
+
+---
+
+## 5. Flujo del Usuario
+
+```
+CLIENTE (dueño negocio)         WALTER (tú)                    SISTEMA
+─────────────────────────────   ──────────────                 ──────────
+
+1. Entra a tudominio.com
+2. Ve HomePage: "Potencia tu
+   negocio con IA"
+3. Click "Comenzar"
+4. Se registra (email + pass
+   + nombre negocio + WhatsApp)
+                                                               JWT generado
+                                                               status = pending
+
+                                5. ClientsPage badge "Pendientes: 1"
+                                6. Revisa datos
+                                7. Aprueba → status = approved
+
+8. Recibe notificación
+9. Login → ve su dashboard    10. Configura agente IA
+                                   desde panel admin
+                                11. Activa agente → status = active
+
+12. Dashboard cliente: leads,
+    conversaciones, métricas
 ```
 
 ---
 
-## 2. Lo Que Ya Está Codeado
+## 6. Arquitectura
 
-| Componente | Archivos clave | Funcionalidad |
-|---|---|---|
-| **Backend API** | `backend-core/app/main.py` | FastAPI corriendo en `:8000` |
-| **CRUD Clientes** | `backend-core/app/application/client/` | Crear, listar, editar, desactivar clientes |
-| **CRUD Agentes IA** | `backend-core/app/application/agent/` | Crear, configurar, asignar agentes con prompt |
-| **Leads** | `backend-core/app/application/lead/` | Capturar, listar, enviar mensajes a leads |
-| **Conversaciones** | `backend-core/app/application/conversation/` | Historial de chats WhatsApp |
-| **Landing Pública** | `backend-core/app/application/landing/` | Página pública captura leads (submit_lead) |
-| **Templates** | `backend-core/app/application/templates/` | Plantillas de mensajes predefinidas |
-| **Email Marketing** | `backend-core/app/application/email/` | Envío de campañas de email |
-| **Feedback** | `backend-core/app/application/feedback/` | Sistema de feedback/NPS |
-| **WhatsApp Webhook** | `backend-core/app/infrastructure/whatsapp/` | Recibe mensajes, procesa con LangGraph |
-| **LangGraph Agent** | `backend-core/app/infrastructure/ai/agent_graph.py` | Motor de IA conversacional |
-| **Supabase Repos** | `backend-core/app/infrastructure/persistence/` | Capa de datos (PostgreSQL) |
-| **Dashboard Frontend** | `frontend-dashboard/src/pages/` | Panel React con todas las pantallas |
-| **Docker Compose** | `docker-compose.yml` | Orquestación: frontend, backend, redis, celery, n8n |
-
----
-
-## 3. Lo Que Falta Construir (Roadmap)
-
-### 🔴 FASE 1 — Autenticación Multi-Tenant (CRÍTICO - empezar aquí)
-
-**Problema actual**: Cualquiera con acceso a la API ve TODOS los datos. No hay login de clientes, no hay separación por tenant.
-
-**Qué hay que hacer**:
-
-| Tarea | Detalle |
-|---|---|
-| **Registro de clientes** | Endpoint `POST /auth/register` — un cliente se registra con email + contraseña + datos del negocio |
-| **Login de clientes** | Endpoint `POST /auth/login` — devuelve JWT con `client_id` en el payload |
-| **Roles** | Tres niveles: `superadmin` (tú), `client_admin` (dueño del negocio), `client_user` (empleados del negocio) |
-| **Middleware de tenant** | Cada request autenticado inyecta `client_id` del JWT. Todas las queries filtran por ese `client_id` |
-| **Ruta protegida frontend** | React Router guard que redirige a `/login` si no hay token |
-| **Pantalla de Login** | Ya existe `LoginPage.tsx` — conectarla al backend real |
-| **Pantalla de Registro** | Nueva: formulario de registro con datos del negocio |
-
-**Archivos a tocar**:
 ```
-NUEVO: backend-core/app/infrastructure/http/auth_router.py
-NUEVO: backend-core/app/application/auth/register_client.py
-NUEVO: backend-core/app/application/auth/login_client.py
-EDITAR: backend-core/app/infrastructure/http/dependencies.py (agregar get_current_client)
-EDITAR: TODOS los routers (filtrar por client_id del token)
-EDITAR: frontend-dashboard/src/pages/LoginPage.tsx
-NUEVO: frontend-dashboard/src/pages/RegisterPage.tsx
-NUEVO: frontend-dashboard/src/context/AuthContext.tsx
+Página pública nuestra     →  /register  →  Auth API → Supabase
+(dueños descubren + se        POST /auth/register     clients table
+ registran)
+
+Login                       →  /login     →  Auth API → JWT
+                               POST /auth/login
+
+Panel admin (Walter)        →  /app/*      →  API scoped → filtrado
+Panel cliente (dueño)       →  /app/*      →  API scoped por client_id
+
+Landing pública del cliente →  /landing/:slug → API pública → leads
+(para captar clientes finales)
+
+WhatsApp                    →  Webhook    →  LangGraph → agente → respuesta
 ```
 
 ---
 
-### 🟠 FASE 2 — Panel de Admin (para ti, Walter)
+## 7. Checklist de Calidad
 
-**Problema actual**: No hay distinción entre lo que ves tú y lo que ve un cliente.
+```bash
+# Backend
+cd backend-core
+ruff check . && mypy . && pytest -q
 
-**Qué hay que hacer**:
-
-| Tarea | Detalle |
-|---|---|
-| **Vista global de clientes** | Tabla con todos los clientes registrados, estado, plan, fecha de registro |
-| **Activar/desactivar cliente** | Tú controlas quién tiene acceso |
-| **Configurar agente por cliente** | Desde tu panel, seleccionas un cliente y le creas/editas su agente IA |
-| **Métricas globales** | Total clientes, total mensajes procesados, agentes activos, ingresos |
-| **Sidebar admin** | Menú diferente al del cliente (más opciones) |
-
-**Archivos a tocar**:
+# Frontend
+cd frontend-dashboard
+npm run lint && npm run typecheck && npm run build
 ```
-EDITAR: frontend-dashboard/src/components/Sidebar.tsx (menú condicional por rol)
-EDITAR: frontend-dashboard/src/pages/DashboardPage.tsx (métricas según rol)
-NUEVO: frontend-dashboard/src/pages/AdminClientsPage.tsx
-EDITAR: backend-core/app/infrastructure/http/client_router.py (endpoints admin)
-```
+
+Todo verde antes de marcar una fase como completa.
 
 ---
 
-### 🟡 FASE 3 — Dashboard del Cliente
-
-**Problema actual**: Las páginas del dashboard existen pero no filtran por `client_id`.
-
-**Qué hay que hacer**:
-
-| Tarea | Detalle |
-|---|---|
-| **Dashboard del cliente** | Al loguearse, el cliente ve SOLO sus métricas: leads, conversaciones, mensajes |
-| **Lista de leads** | Solo los leads de SU negocio |
-| **Conversaciones** | Solo los chats de SU WhatsApp |
-| **Configuración de agente** | El cliente puede ver (no editar) la configuración de su agente IA |
-| **Perfil** | El cliente puede editar datos de su negocio (nombre, rubro, horarios) |
-
-**Archivos a tocar**:
-```
-EDITAR: TODAS las queries en backend-core/app/infrastructure/persistence/
-        Agregar WHERE client_id = current_client_id
-EDITAR: frontend-dashboard/src/api/*.ts (pasar token JWT en headers)
-EDITAR: frontend-dashboard/src/pages/*.tsx (solo muestran datos del cliente autenticado)
-```
-
----
-
-### 🟢 FASE 4 — Onboarding Wizard
-
-**Problema actual**: El cliente se registra y no sabe qué hacer.
-
-**Qué hay que hacer**:
-
-| Tarea | Detalle |
-|---|---|
-| **Paso 1: Datos del negocio** | Nombre, rubro, descripción, horarios |
-| **Paso 2: Conectar WhatsApp** | Instrucciones para conectar su número a Evolution API (o escanear QR) |
-| **Paso 3: Configurar agente** | El cliente elige tono, idioma, servicios que ofrece. Tú validas. |
-| **Paso 4: Activar** | Tú activas el agente desde tu panel admin |
-
----
-
-### 🔵 FASE 5 — Facturación y Planes
-
-**Problema actual**: No hay forma de cobrar.
-
-**Qué hay que hacer**:
-
-| Tarea | Detalle |
-|---|---|
-| **Planes** | Free (100 msgs/mes), Pro (1000 msgs/mes), Enterprise (ilimitado) |
-| **Pasarela de pago** | Stripe o MercadoPago |
-| **Límites** | Middleware que cuenta mensajes por cliente y bloquea si excede |
-| **Facturas** | Generación automática de factura/recibo |
-
----
-
-## 4. Flujo del Cliente (Paso a Paso)
-
-```
-CLIENTE (dueño de negocio)              WALTER (tú)                    SISTEMA
-─────────────────────────────           ──────────────                 ──────────
-                                       
-1. Entra a tudominio.com               
-2. Ve landing "Potencia tu             
-   negocio con IA"                     
-3. Click en "Comenzar"                 
-4. Se registra (email + pass           
-   + datos negocio)                    
-                                                                   5. JWT generado
-                                                                      Redirige a /dashboard
-                                                                      
-6. Ve wizard onboarding:                                            7. Muestra pasos:
-   - Completa perfil                                                  1. Perfil
-   - Elige rubro/templates                                            2. Templates
-   - Conecta WhatsApp                                                 3. WhatsApp
-                                                                    
-                                       8. Recibes notificación       
-                                       9. Revisas datos cliente      
-                                       10. Creas agente IA           
-                                           con prompt personalizado  
-                                       11. Activas agente            
-                                                                     12. Agente IA online
-                                                                         WhatsApp conectado
-                                                                         
-13. Cliente ve dashboard:                                           14. Dashboard muestra:
-    - Leads capturados                                                  leads, conversaciones
-    - Conversaciones                                                    métricas en tiempo real
-    - Estadísticas                                                  
-```
-
----
-
-## 5. Arquitectura Multi-Tenant
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    SUPABASE (PostgreSQL)                     │
-│                                                              │
-│  Tabla: clients          Tabla: agents        Tabla: leads   │
-│  ┌─────────────────┐    ┌────────────────┐   ┌────────────┐ │
-│  │ id (PK)         │    │ id (PK)        │   │ id (PK)    │ │
-│  │ name            │◄───│ client_id (FK) │◄──│ client_id  │ │
-│  │ email           │    │ name           │   │ name       │ │
-│  │ password_hash   │    │ prompt         │   │ phone      │ │
-│  │ plan            │    │ model          │   │ status     │ │
-│  │ is_active       │    │ is_active      │   │ ...        │ │
-│  │ created_at      │    │ ...            │   └────────────┘ │
-│  └─────────────────┘    └────────────────┘                  │
-│                                                              │
-│  REGLA DE ORO: TODA query incluye WHERE client_id = $1      │
-│  $1 = client_id extraído del JWT del usuario autenticado     │
-└──────────────────────────────────────────────────────────────┘
-
-JWT Payload:
-{
-  "sub": "client_uuid",
-  "client_id": "uuid-del-cliente",
-  "role": "client_admin",
-  "exp": 1234567890
-}
-```
-
----
-
-## 6. Orden de Implementación (Qué Hacer Primero)
-
-| Orden | Fase | Tiempo estimado | Depende de |
-|---|---|---|---|
-| **1** | Auth multi-tenant (registro + login + JWT) | 2-3 días | Nada |
-| **2** | Middleware tenant (filtrar queries por client_id) | 1-2 días | Fase 1 |
-| **3** | Frontend auth (AuthContext + rutas protegidas) | 1 día | Fase 1 |
-| **4** | Panel Admin (métricas globales, gestión clientes) | 2 días | Fase 2 |
-| **5** | Dashboard cliente (filtrar datos por tenant) | 2 días | Fase 2 y 3 |
-| **6** | Onboarding wizard | 2 días | Fase 3 |
-| **7** | Facturación (Stripe/MercadoPago) | 3-4 días | Fase 3 |
-| **8** | Deploy producción (VPS + dominio + HTTPS) | 1 día | Fase 5 |
-
-**Total estimado**: ~15 días de trabajo para tener la plataforma completa.
-
----
-
-## 7. Checklist Técnico Detallado
-
-### Backend — Nuevos Archivos
-
-```
-backend-core/app/application/auth/
-├── __init__.py
-├── register_client.py       # Caso de uso: registrar nuevo cliente
-├── login_client.py           # Caso de uso: login y generar JWT
-└── get_current_client.py     # Caso de uso: obtener perfil del cliente autenticado
-
-backend-core/app/infrastructure/http/
-├── auth_router.py            # POST /auth/register, POST /auth/login, GET /auth/me
-└── admin_router.py           # Endpoints solo para superadmin
-```
-
-### Backend — Archivos a Editar
-
-```
-backend-core/app/infrastructure/http/dependencies.py
-  → Agregar get_current_client() que extrae client_id del JWT
-  → Agregar require_superadmin() para rutas admin
-
-backend-core/app/infrastructure/persistence/lead_repository.py
-backend-core/app/infrastructure/persistence/conversation_repository.py
-backend-core/app/infrastructure/persistence/agent_repository.py
-backend-core/app/infrastructure/persistence/email_repository.py
-backend-core/app/infrastructure/persistence/feedback_repository.py
-  → TODOS: agregar filtro WHERE client_id = $1
-
-backend-core/app/infrastructure/config/settings.py
-  → Agregar JWT_SECRET, JWT_EXPIRE_MINUTES (ya existen en .env.example)
-  → Agregar SUPERADMIN_EMAILS (lista de emails con rol superadmin)
-
-backend-core/migrations/
-  → 002_add_auth_fields.sql: agregar password_hash, role a tabla clients
-```
-
-### Frontend — Nuevos Archivos
-
-```
-frontend-dashboard/src/
-├── context/
-│   └── AuthContext.tsx        # Proveedor de autenticación (token, rol, client_id)
-├── hooks/
-│   └── useAuth.ts            # Hook para acceder al contexto de auth
-├── pages/
-│   ├── RegisterPage.tsx       # Formulario de registro
-│   └── AdminClientsPage.tsx   # Panel admin: lista de clientes
-└── components/
-    ├── ProtectedRoute.tsx     # Guard que redirige a /login si no hay token
-    └── AdminRoute.tsx         # Guard que redirige si no es superadmin
-```
-
-### Frontend — Archivos a Editar
-
-```
-frontend-dashboard/src/
-├── App.tsx                    # Agregar rutas: /login, /register, /admin/*
-├── main.tsx                   # Envolver app en AuthProvider
-├── api/config.ts              # Agregar interceptor JWT en headers
-├── components/Sidebar.tsx     # Menú condicional según rol
-└── pages/LoginPage.tsx        # Conectar con endpoint real
-```
-
----
-
-## 8. Notas Importantes
-
-- **El `.env` NUNCA se commitea**. Usa `.env.example` como template. El `.gitignore` ya está configurado.
-- **Branch principal**: `main` (no `master`).
-- **Docker Compose** levanta todo junto. En producción, separa frontend (nginx) y backend (uvicorn) con redes internas.
-- **Supabase Row Level Security (RLS)**: Opcionalmente puedes usar RLS de Supabase para reforzar multi-tenancy a nivel base de datos, además del filtro en código.
-- **Dominio**: Compra un dominio tipo `agenciasia.com`. Configura DNS apuntando a tu VPS.
-- **HTTPS**: Usa Traefik o Caddy como reverse proxy con Let's Encrypt automático.
-
----
-
-## 9. Glosario
-
-| Término | Significado |
-|---|---|
-| **Multi-tenant** | Múltiples clientes comparten la misma app pero solo ven sus datos |
-| **JWT** | Token que identifica al usuario sin sesiones en servidor |
-| **LangGraph** | Framework de LangChain para agentes IA conversacionales |
-| **Evolution API** | Servidor WhatsApp auto-hosteado (alternativa a Meta Cloud API) |
-| **Supabase** | PostgreSQL como servicio con API REST automática |
-| **Celery** | Sistema de tareas en segundo plano (ej: procesar mensajes, enviar emails) |
-| **n8n** | Automatizador visual de flujos (opcional, para flujos secundarios) |
-
----
-
-> **Próximo paso**: Empezar con Fase 1 — Autenticación Multi-Tenant.  
-> Cuando estés listo, dime: *"Walter, arrancamos con el registro y login"* y lo codeamos.
+> **Documento ÚNICO**. No hay otro plan. Si ves un `.md` de planificación que no es este, está obsoleto.
+> Próxima fase: **FASE 2 — Página pública de la plataforma + Frontend Auth**.
