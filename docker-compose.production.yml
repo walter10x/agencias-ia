@@ -115,11 +115,13 @@ services:
   # ============================================================
   # PostgREST - API REST (compatible Supabase)
   # ============================================================
+  # NOTA: el role "authenticator" es creado por docker/postgres/init.sql
+  # con password hardcoded "postgrest" (NO modificar init.sql sin migración)
   postgrest:
     image: postgrest/postgrest:latest
     container_name: agencia-postgrest
     environment:
-      PGRST_DB_URI: postgres://authenticator:${POSTGREST_PASSWORD:?POSTGREST_PASSWORD required}@postgres:5432/${POSTGRES_DB:-agencias_db}
+      PGRST_DB_URI: postgres://authenticator:postgrest@postgres:5432/${POSTGRES_DB:-agencias_db}
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: web_anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
