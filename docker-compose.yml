@@ -6,7 +6,7 @@ services:
     build: ./frontend-dashboard
     container_name: agencia-frontend
     ports:
-      - "5050:80"
+      - "5051:80"
     depends_on:
       - backend
     restart: unless-stopped
@@ -26,8 +26,67 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgrest-proxy:
+        condition: service_started
     volumes:
       - ./backend-core/app:/app/app
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # PostgreSQL 16 - Base de datos local (reemplaza Supabase)
+  # ============================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agencia-postgres
+    environment:
+      POSTGRES_DB: agencias_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # PostgREST - API REST (misma API que Supabase)
+  # ============================================================
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: agencia-postgrest
+    environment:
+      PGRST_DB_URI: postgres://authenticator:postgrest@postgres:5432/agencias_db
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: web_anon
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # PostgREST Proxy (nginx) - Reescribe /rest/v1/* para PostgREST
+  # ============================================================
+  postgrest-proxy:
+    image: nginx:alpine
+    container_name: agencia-postgrest-proxy
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - postgrest
     restart: unless-stopped
     networks:
       - agencia-net
@@ -91,6 +150,7 @@ services:
 
 volumes:
   n8n-data:
+  postgres-data:
 
 networks:
   agencia-net:

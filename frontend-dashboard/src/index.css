@@ -1,35 +1,84 @@
 @import "tailwindcss";
 
+@theme {
+  --color-accent: #f59e0b;
+  --color-accent-light: #fbbf24;
+  --color-accent-dark: #d97706;
+  --color-surface: #18181b;
+  --color-surface-hover: #27272a;
+  --color-surface-alt: #09090b;
+  --color-border: #27272a;
+  --color-border-light: #3f3f46;
+  --color-success: #34d399;
+  --color-error: #f87171;
+  --color-info: #60a5fa;
+}
+
 @layer base {
   body {
     @apply bg-black text-white antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-amber-500;
   }
-
-  /* Scrollbar estilizada */
-  ::-webkit-scrollbar {
-    width: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-zinc-800 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-zinc-700;
-  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-zinc-800 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-zinc-700; }
 }
 
-/* Utilidad: ocultar scrollbar */
 @utility scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+@utility animate-fade-in     { animation: fadeIn 0.3s ease-out; }
+@utility animate-slide-right { animation: slideInRight 0.3s ease-out; }
+@utility animate-slide-left  { animation: slideInLeft 0.3s ease-out; }
+@utility animate-scale-in    { animation: scaleIn 0.2s ease-out; }
+
+@utility stagger-item {
+  opacity: 0;
+  animation: fadeIn 0.3s ease-out forwards;
+  &:nth-child(1) { animation-delay: 0.05s; }
+  &:nth-child(2) { animation-delay: 0.1s; }
+  &:nth-child(3) { animation-delay: 0.15s; }
+  &:nth-child(4) { animation-delay: 0.2s; }
+  &:nth-child(5) { animation-delay: 0.25s; }
+  &:nth-child(6) { animation-delay: 0.3s; }
+}
+
+@utility skeleton {
+  @apply bg-zinc-800 rounded;
+  background: linear-gradient(90deg, #27272a 25%, #3f3f46 50%, #27272a 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@utility empty-state-icon {
+  @apply transition-all duration-300;
 }

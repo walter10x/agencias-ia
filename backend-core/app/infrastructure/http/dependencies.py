@@ -143,3 +143,8 @@ async def require_superadmin(
             detail="Superadmin access required",
         )
     return current
+
+
+def superadmin_or_own_client(current: CurrentClientOutput) -> str | None:
+    """Superadmin ve todo (None), client_admin solo ve su propio client_id."""
+    return None if current.role == "superadmin" else current.client_id

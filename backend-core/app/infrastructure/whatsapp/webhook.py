@@ -26,20 +26,20 @@ router = APIRouter()
 def get_client_repo():
     """FastAPI dependency: ClientRepository (overridden in tests)."""
     from app.infrastructure.persistence.client_repository import SupabaseClientRepository
-    from supabase import Client as SupabaseClient
+    from app.infrastructure.http.supabase_client import SupabaseHttpClient
 
     settings = get_settings()
-    client = SupabaseClient(settings.supabase_url, settings.supabase_service_key)
+    client = SupabaseHttpClient(settings.supabase_url, settings.supabase_service_key)
     return SupabaseClientRepository(client)
 
 
 def get_agent_repo():
     """FastAPI dependency: AgentRepository (overridden in tests)."""
     from app.infrastructure.persistence.agent_repository import SupabaseAgentRepository
-    from supabase import Client as SupabaseClient
+    from app.infrastructure.http.supabase_client import SupabaseHttpClient
 
     settings = get_settings()
-    client = SupabaseClient(settings.supabase_url, settings.supabase_service_key)
+    client = SupabaseHttpClient(settings.supabase_url, settings.supabase_service_key)
     return SupabaseAgentRepository(client)
 
 

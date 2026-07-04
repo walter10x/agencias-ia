@@ -49,7 +49,7 @@ export default function AgentDetailPage() {
     onSuccess: () => {
       toast("success", "Agente eliminado permanentemente");
       queryClient.invalidateQueries({ queryKey: ["agents"] });
-      navigate(agent?.client_id ? `/clients/${agent.client_id}` : "/agents");
+      navigate(agent?.client_id ? `/app/clients/${agent.client_id}` : "/app/agents");
     },
     onError: (err: Error) => toast("error", err.message),
   });
@@ -84,7 +84,7 @@ export default function AgentDetailPage() {
           <h3 className="text-lg font-semibold text-white mb-2">Agente no encontrado</h3>
           <p className="text-sm text-zinc-500 mb-6">El agente que buscas no existe o fue eliminado.</p>
           <button
-            onClick={() => navigate("/agents")}
+            onClick={() => navigate("/app/agents")}
             className="px-4 py-2 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
           >
             Volver a agentes

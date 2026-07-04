@@ -63,7 +63,7 @@ export default function LeadDetailPage() {
       {/* Back button */}
       <div className="relative z-10">
         <button
-          onClick={() => navigate("/leads")}
+          onClick={() => navigate("/app/leads")}
           className="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors"
         >
           <ArrowLeft size={16} />

@@ -1,4 +1,4 @@
-import { useState, type FormEvent, useRef } from "react";
+import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Loader2, Plus, Trash2 } from "lucide-react";
 import { createAgent, updateAgent, type AgentData, type AgentToolData, type AgentCreateInput, type AgentUpdateInput } from "@/api/agent";
@@ -35,8 +35,6 @@ export default function AgentForm({ isOpen, onClose, clientId, agent, onSuccess 
 
   const [name, setName] = useState(agent?.name ?? "");
   const [personality, setPersonality] = useState(agent?.personality ?? "");
-  const toolRef = useRef(0);
-  
   const [tools, setTools] = useState<ToolRow[]>(
     agent?.tools.length
       ? agent.tools.map((t) => ({ ...t, key: crypto.randomUUID() }))

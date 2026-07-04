@@ -14,8 +14,6 @@ class SupabaseHttpClient:
         self.url = url.rstrip("/")
         self.key = key
         self._headers = {
-            "apikey": key,
-            "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
         }
 
