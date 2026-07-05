@@ -10,11 +10,11 @@
 | Componente | Estado | Detalle |
 |------------|--------|---------|
 | PostgreSQL local (9 tablas, pgvector) | ✅ | `docker exec agencia-postgres psql -U postgres -d agencias_db` |
-| Admin panel | ✅ | `http://localhost:5051` — login: walter@admin.com / SuperAdmin123! |
-| Meta WhatsApp Cloud API | ✅ | Phone Number ID: `1202123836308611`, Token configurado en `.env` |
+| Admin panel | ✅ | `http://localhost:5051` — login: <email-admin> / <password-admin> (rotado; ver SECURITY-TODO.md) |
+| Meta WhatsApp Cloud API | ✅ | Phone Number ID: `<phone-number-id-de-ejemplo>`, Token configurado en `.env` |
 | Webhook verification | ✅ | `GET /webhook/whatsapp?hub.mode=subscribe...` → 200 OK |
 | Message processing | ✅ | Cliente encontrado por WhatsApp, agente encontrado, Celery encolado |
-| Cloudflare Tunnel | ✅ | URL: `https://charter-compute-identified-testament.trycloudflare.com` |
+| Cloudflare Tunnel | ✅ | URL: `https://<tu-subdominio>.trycloudflare.com` |
 | **LLM (IA del bot)** | ❌ | API key de OpenAI es placeholder (`sk-...`). Respuesta 401. |
 
 Para completar: conseguir API key real de OpenAI, Anthropic, o instalar Ollama local.
@@ -55,15 +55,15 @@ Para completar: conseguir API key real de OpenAI, Anthropic, o instalar Ollama l
 |------------|--------|
 | Docker (8 contenedores) | ✅ `docker ps` |
 | PostgreSQL local (9 tablas, pgvector) | ✅ |
-| Admin panel (`http://localhost:5051`) | ✅ Login con walter@admin.com / SuperAdmin123! |
+| Admin panel (`http://localhost:5051`) | ✅ Login con <email-admin> / <password-admin> (rotado; ver SECURITY-TODO.md) |
 | Crear clientes y agentes | ✅ Desde el panel o API |
 | Plantillas (10 rubros, 40 herramientas para n8n) | ✅ |
 | n8n (contenedor corriendo) | ✅ `http://localhost:5678` (sin flujos aún) |
 | Celery + Redis para tareas asíncronas | ✅ |
 | Webhook endpoint `/webhook/whatsapp` | ✅ Soporta Meta + Evolution API |
 | Rate limiting (10 msg/60s por número) | ✅ |
-| **Meta WhatsApp Cloud API** | ✅ Phone Number ID: `1202123836308611` |
-| **Cloudflare Tunnel (webhook público)** | ✅ `https://charter-compute-identified-testament.trycloudflare.com` |
+| **Meta WhatsApp Cloud API** | ✅ Phone Number ID: `<phone-number-id-de-ejemplo>` |
+| **Cloudflare Tunnel (webhook público)** | ✅ `https://<tu-subdominio>.trycloudflare.com` |
 | **Message processor** | ✅ Busca cliente por WhatsApp, busca agente, encola Celery |
 | **JWT secret** | ✅ Configurado |
 | **Superadmin access a agentes cross-client** | ✅ Agente router arreglado |
@@ -177,13 +177,13 @@ cloudflared tunnel --url http://localhost:8000
 
 Te dará una URL tipo `https://xxx.trycloudflare.com`. Esa es tu webhook público.
 
-> **Ya está corriendo**: `https://charter-compute-identified-testament.trycloudflare.com` (si se cae, reinicia el comando arriba y actualiza la URL en Meta).
+> **Ya está corriendo**: `https://<tu-subdominio>.trycloudflare.com` (si se cae, reinicia el comando arriba y actualiza la URL en Meta).
 
 ### 3.3 Configurar webhook en Meta
 
 1. En [developers.facebook.com](https://developers.facebook.com) > Tu App > WhatsApp > Configuración
 2. En **Webhook**:
-   - **URL de callback**: `https://charter-compute-identified-testament.trycloudflare.com/webhook/whatsapp`
+   - **URL de callback**: `https://<tu-subdominio>.trycloudflare.com/webhook/whatsapp`
    - **Token de verificación**: `my-verify-token`
 3. Suscríbete a `messages`
 

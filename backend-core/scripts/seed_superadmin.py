@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""Idempotent seed script: creates or updates the superadmin (Walter) in Supabase.
+"""Idempotent seed script: creates or updates the superadmin in Supabase.
 
 Usage:
-    SUPERADMIN_EMAIL=walter@admin.com SUPERADMIN_PASSWORD=segura123 \
+    SUPERADMIN_EMAIL=admin@example.com SUPERADMIN_PASSWORD=<contraseña-fuerte> \
         python scripts/seed_superadmin.py
 
-Environment variables:
-    SUPERADMIN_EMAIL    (default: walter@admin.com)
-    SUPERADMIN_PASSWORD (default: SuperAdmin123!)
+Environment variables (AMBAS obligatorias, sin defaults):
+    SUPERADMIN_EMAIL    — email del superadmin a crear/actualizar.
+    SUPERADMIN_PASSWORD — password en texto plano (se hashea con bcrypt antes
+                          de persistir). Genera una fuerte, ej.:
+                          python3 -c "import secrets; print(secrets.token_urlsafe(18))"
+
+Nota de seguridad (Fase 0.2/0.3 saneamiento): este script NO tiene defaults
+hardcodeados para email/password. Antes tenía "walter@admin.com" /
+"SuperAdmin123!" como fallback, lo que quedó además documentado en texto
+plano en GUIA-INTEGRACION.md. Si ese admin llegó a crearse en algún entorno
+real con esas credenciales, hay que rotarlas (ver SECURITY-TODO.md).
 """
 
 from __future__ import annotations
@@ -39,8 +47,8 @@ def main() -> None:
     supabase_url = _get_env_or_fail("SUPABASE_URL")
     supabase_key = _get_env_or_fail("SUPABASE_SERVICE_KEY")
 
-    email = os.environ.get("SUPERADMIN_EMAIL", "walter@admin.com")
-    password = os.environ.get("SUPERADMIN_PASSWORD", "SuperAdmin123!")
+    email = _get_env_or_fail("SUPERADMIN_EMAIL")
+    password = _get_env_or_fail("SUPERADMIN_PASSWORD")
 
     client: Client = create_client(supabase_url, supabase_key)
     hasher = BcryptPasswordHasher()

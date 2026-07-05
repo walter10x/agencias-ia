@@ -56,8 +56,11 @@ services:
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-my-verify-token}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v22.0}
 
-      # === Evolution API ===
-      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-http://evolution-api:8080}
+      # === Evolution API (Fase 0.5: plan B "dormido", ver README.md) ===
+      # El canal del MVP es Meta Cloud API (arriba). No hay servicio
+      # "evolution-api" desplegado en este compose — estas variables
+      # quedan vacías y sin efecto salvo que se reactive Evolution.
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
 
       # === n8n ===
@@ -106,8 +109,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-agencias_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Password del rol "authenticator" que usa PostgREST. Se consume en
+      # docker/postgres/00-create-roles.sh (NO hay password hardcodeada en
+      # init.sql). Generar con: openssl rand -hex 24
+      POSTGREST_AUTHENTICATOR_PASSWORD: ${POSTGREST_AUTHENTICATOR_PASSWORD:?POSTGREST_AUTHENTICATOR_PASSWORD is required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/00-create-roles.sh:/docker-entrypoint-initdb.d/00-create-roles.sh
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
@@ -121,13 +129,16 @@ services:
   # ============================================================
   # PostgREST - API REST (compatible Supabase)
   # ============================================================
-  # NOTA: el role "authenticator" es creado por docker/postgres/init.sql
-  # con password hardcoded "postgrest" (NO modificar init.sql sin migración)
+  # NOTA: el rol "authenticator" es creado por
+  # docker/postgres/00-create-roles.sh usando la variable de entorno
+  # POSTGREST_AUTHENTICATOR_PASSWORD (mismo valor que abajo). NO hay
+  # password hardcodeada en el repo — ver esa nota también en el servicio
+  # "postgres".
   postgrest:
     image: postgrest/postgrest:latest
     container_name: agencia-postgrest
     environment:
-      PGRST_DB_URI: postgres://authenticator:postgrest@postgres:5432/${POSTGRES_DB:-agencias_db}
+      PGRST_DB_URI: postgres://authenticator:${POSTGREST_AUTHENTICATOR_PASSWORD:?POSTGREST_AUTHENTICATOR_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-agencias_db}
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: web_anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
@@ -211,7 +222,9 @@ services:
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-my-verify-token}
-      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-http://evolution-api:8080}
+      # Evolution API: plan B "dormido" (Fase 0.5, ver README.md). Sin
+      # servicio activo en este compose; variables vacías por defecto.
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
       N8N_URL: ${N8N_URL:-http://n8n:5678}
       N8N_API_KEY: ${N8N_API_KEY:-}
