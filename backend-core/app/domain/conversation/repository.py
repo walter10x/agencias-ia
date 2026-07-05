@@ -45,6 +45,36 @@ class ConversationRepository(ABC):
         ...
 
     @abstractmethod
+    async def find_by_client_and_phone(
+        self, client_id: str, phone: str
+    ) -> Optional[Conversation]:
+        """Busca la conversación más reciente de (client_id, wa_phone_number).
+
+        Retorna None si el cliente nunca ha conversado con ese teléfono.
+        """
+        ...
+
+    @abstractmethod
+    async def save(self, conversation: Conversation) -> None:
+        """Crea o actualiza (upsert) una conversación."""
+        ...
+
+    @abstractmethod
+    async def append_message(self, message: Message) -> None:
+        """Persiste un mensaje individual dentro de una conversación."""
+        ...
+
+    @abstractmethod
+    async def get_recent_messages(
+        self, conversation_id: str, limit: int = 10
+    ) -> list[Message]:
+        """Obtiene los últimos N mensajes en orden cronológico ASC.
+
+        Pensado para inyectar historial en el prompt del LLM.
+        """
+        ...
+
+    @abstractmethod
     async def get_stats(self) -> dict:
         """Retorna estadísticas globales de conversaciones.
 
