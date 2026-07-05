@@ -48,10 +48,16 @@ services:
       POSTGRES_DB: agencias_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      # Password del rol "authenticator" de PostgREST (solo dev local).
+      # Override vía export POSTGREST_AUTHENTICATOR_PASSWORD=... si quieres
+      # un valor distinto. En producción es obligatoria (ver
+      # docker-compose.production.yml) y NUNCA debe ser este default.
+      POSTGREST_AUTHENTICATOR_PASSWORD: ${POSTGREST_AUTHENTICATOR_PASSWORD:-postgrest-dev-local-only}
     ports:
       - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/00-create-roles.sh:/docker-entrypoint-initdb.d/00-create-roles.sh
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -69,7 +75,9 @@ services:
     image: postgrest/postgrest:latest
     container_name: agencia-postgrest
     environment:
-      PGRST_DB_URI: postgres://authenticator:postgrest@postgres:5432/agencias_db
+      # Debe coincidir con POSTGREST_AUTHENTICATOR_PASSWORD del servicio
+      # "postgres" (ver docker/postgres/00-create-roles.sh).
+      PGRST_DB_URI: postgres://authenticator:${POSTGREST_AUTHENTICATOR_PASSWORD:-postgrest-dev-local-only}@postgres:5432/agencias_db
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: web_anon
     depends_on:

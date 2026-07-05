@@ -1,9 +1,12 @@
 -- ============================================================
 -- Init script: PostgREST auth roles + schema + migrations
 -- ============================================================
+-- NOTA (Fase 0.2 saneamiento): el rol "authenticator" YA NO se crea aquí
+-- con password hardcodeada. Se crea en 00-create-roles.sh (que corre antes
+-- que este archivo, por orden alfabético en docker-entrypoint-initdb.d/)
+-- usando la variable de entorno POSTGREST_AUTHENTICATOR_PASSWORD.
+-- Ver docker/postgres/00-create-roles.sh.
 
--- Roles para PostgREST
-CREATE ROLE authenticator WITH LOGIN NOINHERIT PASSWORD 'postgrest';
 CREATE ROLE web_anon WITH NOLOGIN;
 GRANT web_anon TO authenticator;
 
