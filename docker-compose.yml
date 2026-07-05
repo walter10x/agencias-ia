@@ -121,7 +121,13 @@ services:
       - agencia-net
 
   # ============================================================
-  # Evolution API - WhatsApp Gateway (Self-hosted)
+  # Evolution API - WhatsApp Gateway (Self-hosted) — plan B "dormido"
+  # ============================================================
+  # Fase 0.5 (PLAN-MVP.md): el canal del MVP es Meta Cloud API, no
+  # Evolution. No hay servicio "evolution-api" aquí (se quitó para no
+  # gastar recursos); el código que lo soporta en el webhook del backend
+  # se mantiene sin usar. Ver README.md y evolution-api.env.example para
+  # reactivarlo si hace falta como fallback.
   # ============================================================
   # n8n - Automatización de flujos secundarios
   # ============================================================
