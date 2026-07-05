@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
 
+    # Cifrado de credenciales por tenant (Fase 3 — Fernet).
+    # Vacío por defecto: FernetCredentialsCipher degrada a un fallback
+    # base64 SOLO-DEV (ver app/infrastructure/security/credentials_cipher.py).
+    # Generar con: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    credentials_encryption_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
