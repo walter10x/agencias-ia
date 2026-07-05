@@ -12,6 +12,7 @@ from app.infrastructure.http.supabase_client import SupabaseHttpClient
 
 from app.domain.appointment.entity import (
     DEFAULT_APPOINTMENT_DURATION_MINUTES,
+    DEFAULT_REMINDER_OFFSET_MINUTES,
     BusinessSchedule,
 )
 from app.domain.appointment.repository import BusinessScheduleRepository
@@ -302,6 +303,15 @@ class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
                 or DEFAULT_APPOINTMENT_DURATION_MINUTES
             ),
             "timezone": str(raw.get("timezone") or "UTC"),
+            # Fase 4: "reminder_offset_minutes" vive dentro del mismo JSONB
+            # business_hours (no es columna propia). Si el cliente fue
+            # creado antes de la Fase 4 y la clave no existe en su JSONB,
+            # se aplica el default en código (1440 min = 24h) sin requerir
+            # backfill de datos.
+            "reminder_offset_minutes": int(
+                raw.get("reminder_offset_minutes")
+                or DEFAULT_REMINDER_OFFSET_MINUTES
+            ),
         }
         if weekly:
             kwargs["weekly_hours"] = weekly

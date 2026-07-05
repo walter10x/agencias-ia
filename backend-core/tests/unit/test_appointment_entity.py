@@ -280,3 +280,19 @@ class TestBusinessSchedule:
     def test_invalid_timezone_raises(self) -> None:
         with pytest.raises(InvalidAppointmentError, match="timezone"):
             BusinessSchedule(timezone="Marte/Olympus")
+
+    # ------------------------------------------------------------------
+    # reminder_offset_minutes (Fase 4)
+    # ------------------------------------------------------------------
+
+    def test_default_reminder_offset_is_24h(self) -> None:
+        schedule = BusinessSchedule.default()
+        assert schedule.reminder_offset_minutes == 1440
+
+    def test_custom_reminder_offset(self) -> None:
+        schedule = BusinessSchedule(reminder_offset_minutes=60)
+        assert schedule.reminder_offset_minutes == 60
+
+    def test_negative_reminder_offset_raises(self) -> None:
+        with pytest.raises(InvalidAppointmentError, match="reminder_offset_minutes"):
+            BusinessSchedule(reminder_offset_minutes=-1)

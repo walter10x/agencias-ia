@@ -307,4 +307,60 @@ async def test_save_whatsapp_credentials_encrypts_before_persisting(
     payload = mock_db._table.update.call_args[0][0]
     assert payload["phone_number_id"] == "111222333"
     assert payload["whatsapp_access_token_encrypted"] == "enc:plain-secret-token"
+
+
+# ======================================================================
+# get_business_schedule() — reminder_offset_minutes (Fase 4)
+# ======================================================================
+
+
+@pytest.mark.asyncio
+async def test_get_business_schedule_reads_reminder_offset_from_jsonb(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    """La clave "reminder_offset_minutes" vive dentro del JSONB business_hours,
+    no como columna propia — se lee sin migración de datos adicional."""
+    mock_db._chain.data = [
+        {
+            "id": "client-1",
+            "business_hours": {"timezone": "UTC", "weekly": {}, "reminder_offset_minutes": 120},
+            "appointment_duration_minutes": 30,
+        }
+    ]
+
+    schedule = await repo.get_business_schedule("client-1")
+
+    assert schedule is not None
+    assert schedule.reminder_offset_minutes == 120
+
+
+@pytest.mark.asyncio
+async def test_get_business_schedule_defaults_reminder_offset_when_key_missing(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    """Tenants creados antes de la Fase 4 no tienen la clave en su JSONB:
+    debe aplicarse el default (1440 min = 24h) en código, sin backfill."""
+    mock_db._chain.data = [
+        {
+            "id": "client-2",
+            "business_hours": {"timezone": "UTC", "weekly": {}},
+            "appointment_duration_minutes": 30,
+        }
+    ]
+
+    schedule = await repo.get_business_schedule("client-2")
+
+    assert schedule is not None
+    assert schedule.reminder_offset_minutes == 1440
+
+
+@pytest.mark.asyncio
+async def test_get_business_schedule_returns_none_for_missing_client(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    mock_db._chain.data = []
+
+    schedule = await repo.get_business_schedule("does-not-exist")
+
+    assert schedule is None
     assert payload["whatsapp_connected"] is True

@@ -2,8 +2,9 @@
 
 Appointment: entidad raíz de una cita agendada.
 AppointmentStatus: enum con los estados de la cita.
-BusinessSchedule: value object con el horario semanal del negocio
-                  y la duración de cita por defecto.
+BusinessSchedule: value object con el horario semanal del negocio,
+                  la duración de cita por defecto y el offset de
+                  recordatorio (Fase 4, `reminder_offset_minutes`).
 
 Reglas de dominio:
 - Una cita siempre termina después de empezar (ends_at > starts_at).
@@ -64,6 +65,14 @@ DEFAULT_WEEKLY_HOURS: dict[str, list[tuple[str, str]]] = {
 
 DEFAULT_APPOINTMENT_DURATION_MINUTES = 30
 
+# Offset por defecto del recordatorio de cita (Fase 4): 24h antes de starts_at.
+# Vive como clave dentro del mismo JSONB business_hours de `clients`
+# ("reminder_offset_minutes"), NO como columna propia — ver BusinessSchedule
+# y SupabaseClientRepository._row_to_schedule. Si el cliente no configuró
+# la clave (tenants creados antes de la Fase 4), este default se aplica en
+# código sin requerir backfill ni migración de datos.
+DEFAULT_REMINDER_OFFSET_MINUTES = 1440
+
 
 def _parse_hhmm(value: str) -> time:
     """Parsea 'HH:MM' a datetime.time. Lanza InvalidAppointmentError si es inválido."""
@@ -87,11 +96,16 @@ class BusinessSchedule:
     )
     appointment_duration_minutes: int = DEFAULT_APPOINTMENT_DURATION_MINUTES
     timezone: str = "UTC"
+    reminder_offset_minutes: int = DEFAULT_REMINDER_OFFSET_MINUTES
 
     def __post_init__(self) -> None:
         if not (5 <= self.appointment_duration_minutes <= 480):
             raise InvalidAppointmentError(
                 "appointment_duration_minutes must be between 5 and 480"
+            )
+        if self.reminder_offset_minutes < 0:
+            raise InvalidAppointmentError(
+                "reminder_offset_minutes must be >= 0"
             )
         try:
             ZoneInfo(self.timezone)
