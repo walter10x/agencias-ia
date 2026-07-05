@@ -9,6 +9,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from app.infrastructure.config.settings import get_settings
 from app.infrastructure.http.agent_router import router as agent_router
+from app.infrastructure.http.appointment_router import router as appointment_router
 from app.infrastructure.http.auth_router import router as auth_router
 from app.infrastructure.http.client_router import router as client_router
 from app.infrastructure.http.conversation_router import router as conversation_router
@@ -65,6 +66,7 @@ app.include_router(client_router, prefix="/api/v1/clients", tags=["Clients"])
 app.include_router(agent_router, prefix="/api/v1/agents", tags=["Agents"])
 app.include_router(conversation_router, prefix="/api/v1/conversations", tags=["Conversations"])
 app.include_router(lead_router, prefix="/api/v1/leads", tags=["Leads"])
+app.include_router(appointment_router, prefix="/api/v1/appointments", tags=["Appointments"])
 app.include_router(feedback_router, prefix="/api/v1/feedback", tags=["Feedback"])
 app.include_router(template_router, prefix="/api/v1/templates", tags=["Templates"])
 app.include_router(landing_public_router, prefix="/api/v1/landing", tags=["Landing Pages"])

@@ -415,6 +415,67 @@ class EmailStatsResponse(BaseModel):
 
 
 # ============================================================================
+# Appointment Schemas
+# ============================================================================
+
+
+class AppointmentCreateRequest(BaseModel):
+    starts_at: str = Field(
+        ...,
+        description="Inicio de la cita, ISO 8601 (naive = hora local del negocio)",
+    )
+    contact_phone: str = Field(..., min_length=5, description="Teléfono del contacto")
+    contact_name: str = Field(default="", max_length=200, description="Nombre del contacto")
+    ends_at: str | None = Field(
+        None, description="Fin de la cita (default: inicio + duración del negocio)"
+    )
+    notes: str = Field(default="", max_length=2000, description="Notas")
+    conversation_id: str | None = Field(None, description="Conversación asociada (UUID)")
+
+
+class AppointmentRescheduleRequest(BaseModel):
+    starts_at: str = Field(..., description="Nuevo inicio, ISO 8601")
+    ends_at: str | None = Field(
+        None, description="Nuevo fin (default: mantiene la duración original)"
+    )
+
+
+class AppointmentResponse(BaseModel):
+    id: str
+    client_id: str
+    conversation_id: str | None = None
+    contact_phone: str
+    contact_name: str
+    starts_at: str
+    ends_at: str
+    status: str
+    notes: str
+    reminder_sent_at: str | None = None
+    created_at: str
+    updated_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class AppointmentListResponse(BaseModel):
+    items: list[AppointmentResponse]
+    total: int
+
+
+class AvailabilitySlotResponse(BaseModel):
+    starts_at: str
+    ends_at: str
+    label: str
+
+
+class AvailabilityResponse(BaseModel):
+    date: str
+    timezone: str
+    slot_duration_minutes: int
+    slots: list[AvailabilitySlotResponse]
+
+
+# ============================================================================
 # Auth Schemas
 # ============================================================================
 
