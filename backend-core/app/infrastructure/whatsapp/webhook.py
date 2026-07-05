@@ -43,12 +43,22 @@ def get_agent_repo():
     return SupabaseAgentRepository(client)
 
 
-async def get_rate_limiter() -> RateLimiter:
-    """FastAPI dependency: RateLimiter (overridden in tests)."""
-    import redis.asyncio as async_redis
+async def get_rate_limiter(request: Request) -> RateLimiter:
+    """FastAPI dependency: RateLimiter (overridden in tests).
 
-    settings = get_settings()
-    redis_client = async_redis.from_url(settings.redis_url)
+    Reutiliza el cliente Redis compartido inicializado en el lifespan de
+    la app (``app.state.redis_client``, ver ``app.main``) cuando está
+    disponible, para no abrir una conexión nueva por request. Si la app
+    no tiene ese estado (p. ej. instancias de test que no ejecutan el
+    lifespan), crea un cliente ad hoc como antes.
+    """
+    redis_client = getattr(request.app.state, "redis_client", None)
+    if redis_client is None:
+        import redis.asyncio as async_redis
+
+        settings = get_settings()
+        redis_client = async_redis.from_url(settings.redis_url)
+
     return RateLimiter(redis_client)
 
 

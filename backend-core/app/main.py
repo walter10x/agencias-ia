@@ -1,5 +1,6 @@
 """Punto de entrada FastAPI para la agencia de IA multi-tenant."""
 
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -21,15 +22,63 @@ from app.infrastructure.http.landing_router import public_router as landing_publ
 from app.infrastructure.http.lead_router import router as lead_router
 from app.infrastructure.templates.router import router as template_router
 
+logger = logging.getLogger(__name__)
+
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Inicializa y limpia recursos de la aplicación."""
-    # TODO: Inicializar pool de conexiones Supabase, Redis, etc.
-    yield
-    # TODO: Cerrar conexiones
+    """Inicializa y limpia recursos compartidos de la aplicación.
+
+    Recursos gestionados aquí:
+    - Redis: un único cliente async compartido (``app.state.redis_client``),
+      reutilizado por el rate limiter del webhook de WhatsApp
+      (ver ``app.infrastructure.whatsapp.webhook.get_rate_limiter``) en vez
+      de abrir una conexión nueva por request.
+    - Supabase/PostgREST: el acceso se hace vía ``SupabaseHttpClient``
+      (``app.infrastructure.http.supabase_client``), un wrapper delgado
+      sobre ``httpx.request`` sin estado de conexión persistente (cada
+      llamada abre y cierra su propia conexión HTTP con timeout). No hay
+      un "pool" real que inicializar: httpx gestiona el connection pooling
+      a nivel de socket por llamada. Si en el futuro se migra a
+      ``httpx.AsyncClient`` reutilizable, este es el lugar para crearlo/
+      cerrarlo (mejora futura, no bloqueante para el MVP).
+
+    No debe lanzar excepciones que impidan el arranque: si Redis no está
+    disponible al iniciar, se loguea el error pero la app sigue
+    arrancando (el rate limiter fallará en runtime con un error claro en
+    vez de tumbar todo el servicio).
+    """
+    logger.info("Iniciando Agencia IA — arrancando recursos compartidos...")
+
+    redis_client = None
+    try:
+        import redis.asyncio as async_redis
+
+        redis_client = async_redis.from_url(settings.redis_url)
+        await redis_client.ping()
+        logger.info("Redis conectado (%s)", settings.redis_url)
+    except Exception:
+        logger.exception(
+            "No se pudo conectar a Redis en el arranque (%s). "
+            "El rate limiter del webhook creará conexiones ad hoc y "
+            "puede fallar hasta que Redis esté disponible.",
+            settings.redis_url,
+        )
+
+    app.state.redis_client = redis_client
+
+    try:
+        yield
+    finally:
+        logger.info("Cerrando Agencia IA — liberando recursos compartidos...")
+        if redis_client is not None:
+            try:
+                await redis_client.aclose()
+                logger.info("Conexión Redis cerrada correctamente.")
+            except Exception:
+                logger.exception("Error cerrando la conexión Redis en el shutdown.")
 
 
 app = FastAPI(
