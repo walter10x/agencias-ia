@@ -40,3 +40,25 @@ class ClientRepository(ABC):
     async def find_by_email(self, email: Email) -> Optional[Client]:
         """Busca un cliente por su email (para login y pre-check de duplicado)."""
         ...
+
+    @abstractmethod
+    async def find_by_phone_number_id(self, phone_number_id: str) -> Optional[Client]:
+        """Busca un cliente por su phone_number_id de Meta Cloud API.
+
+        Usado para el routing multi-tenant del webhook entrante
+        (Fase 3): Meta incluye `metadata.phone_number_id` en cada
+        payload y ese valor identifica de forma única el tenant.
+        """
+        ...
+
+    @abstractmethod
+    async def save_whatsapp_credentials(
+        self, client_id: str, phone_number_id: str, access_token: str
+    ) -> None:
+        """Persiste phone_number_id + access_token (cifrado) del tenant.
+
+        El cifrado del token es responsabilidad del adaptador concreto
+        (usa CredentialsCipherPort internamente) — el dominio nunca ve
+        el token en claro ni conoce el algoritmo de cifrado.
+        """
+        ...

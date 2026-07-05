@@ -20,6 +20,26 @@ from app.domain.client.repository import ClientRepository
 from app.domain.shared.errors import DomainError, InvalidClientError
 from app.domain.shared.value_objects import BusinessType, ClientId, Email, PasswordHash, WhatsAppNumber
 
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class WhatsAppCredentials:
+    """Credenciales de Meta Cloud API de un tenant, ya descifradas.
+
+    `has_credentials` es False cuando el cliente no tiene phone_number_id
+    o access_token propios (columna vacía) — en ese caso el llamador
+    (WhatsAppSender / tasks.py) decide si aplica el fallback a las
+    credenciales globales de env.
+    """
+
+    phone_number_id: str
+    access_token: str
+
+    @property
+    def has_credentials(self) -> bool:
+        return bool(self.phone_number_id) and bool(self.access_token)
+
 
 class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
     """Supabase implementation of ClientRepository.
@@ -29,8 +49,24 @@ class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
 
     TABLE = "clients"
 
-    def __init__(self, client: SupabaseHttpClient) -> None:
+    def __init__(self, client: SupabaseHttpClient, cipher=None) -> None:
         self._db = client
+        # Cipher opcional: solo se necesita para leer/escribir el access
+        # token cifrado (get_whatsapp_credentials / save con token). Se
+        # inyecta perezosamente si no se provee, para no romper los
+        # call-sites existentes que no lo necesitan.
+        self._cipher = cipher
+
+    def _get_cipher(self):
+        if self._cipher is None:
+            from app.infrastructure.config.settings import get_settings
+            from app.infrastructure.security.credentials_cipher import (
+                FernetCredentialsCipher,
+            )
+
+            settings = get_settings()
+            self._cipher = FernetCredentialsCipher(settings.credentials_encryption_key)
+        return self._cipher
 
     # ------------------------------------------------------------------
     # Port methods
@@ -83,6 +119,102 @@ class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
         if not result.data:
             return None
         return self._row_to_client(result.data[0])
+
+    async def find_by_phone_number_id(self, phone_number_id: str) -> Optional[Client]:
+        """Find a client by su Meta Cloud API phone_number_id.
+
+        Usado para el routing multi-tenant del webhook entrante: Meta
+        envía `metadata.phone_number_id` en cada payload, y ese valor
+        identifica de forma única el número (y por tanto el tenant)
+        que recibió el mensaje.
+        """
+        if not phone_number_id or not phone_number_id.strip():
+            return None
+
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .eq("phone_number_id", phone_number_id.strip())
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_client(result.data[0])
+
+    async def get_whatsapp_credentials(self, client_id: str) -> "WhatsAppCredentials":
+        """Lee y descifra las credenciales de WhatsApp Cloud API del tenant.
+
+        Retorna WhatsAppCredentials con campos vacíos (has_credentials=False)
+        si el cliente no existe o no tiene credenciales propias configuradas;
+        NUNCA lanza por ausencia de credenciales (el llamador decide el
+        fallback a credenciales globales de env).
+        """
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("phone_number_id,whatsapp_access_token_encrypted")
+                .eq("id", client_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return WhatsAppCredentials(phone_number_id="", access_token="")
+
+        if not result.data:
+            return WhatsAppCredentials(phone_number_id="", access_token="")
+
+        row = result.data[0]
+        phone_number_id = str(row.get("phone_number_id") or "")
+        encrypted_token = str(row.get("whatsapp_access_token_encrypted") or "")
+        if not phone_number_id or not encrypted_token:
+            return WhatsAppCredentials(phone_number_id=phone_number_id, access_token="")
+
+        try:
+            access_token = self._get_cipher().decrypt(encrypted_token)
+        except ValueError as exc:
+            # Token corrupto o cifrado con una clave distinta a la actual:
+            # se trata como "sin credenciales" en vez de tumbar el envío.
+            import logging
+
+            logging.getLogger(__name__).error(
+                "No se pudo descifrar whatsapp_access_token_encrypted para "
+                f"client_id={client_id}: {exc}"
+            )
+            return WhatsAppCredentials(phone_number_id=phone_number_id, access_token="")
+
+        return WhatsAppCredentials(
+            phone_number_id=phone_number_id, access_token=access_token
+        )
+
+    async def save_whatsapp_credentials(
+        self, client_id: str, phone_number_id: str, access_token: str
+    ) -> None:
+        """Cifra el access token y persiste phone_number_id + token cifrado.
+
+        No hace ninguna llamada de red a Meta para validar las credenciales
+        (decisión explícita: el sandbox/CI no tiene salida a Meta).
+        """
+        encrypted_token = self._get_cipher().encrypt(access_token) if access_token else ""
+        try:
+            await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .update(
+                    {
+                        "phone_number_id": phone_number_id,
+                        "whatsapp_access_token_encrypted": encrypted_token,
+                        "whatsapp_connected": bool(phone_number_id and access_token),
+                    }
+                )
+                .eq("id", client_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
 
     async def find_by_email(self, email: Email) -> Optional[Client]:
         """Find a client by email. Returns None if not found."""
