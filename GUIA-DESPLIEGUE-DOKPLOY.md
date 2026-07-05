@@ -277,7 +277,7 @@ LLM_MODEL=gpt-4o-mini
 ### 5. WhatsApp Cloud API (Meta)
 
 ```bash
-WHATSAPP_PHONE_NUMBER_ID=1202123836308611
+WHATSAPP_PHONE_NUMBER_ID=<phone-number-id-de-ejemplo>
 WHATSAPP_ACCESS_TOKEN=EAAxxxxxxx...
 WHATSAPP_VERIFY_TOKEN=my-verify-token
 WHATSAPP_API_VERSION=v22.0
@@ -678,7 +678,7 @@ Después del primer deploy exitoso:
 
 1. [ ] Configurar backups automáticos de Postgres (Dokploy → Backups)
 2. [ ] Configurar notificaciones (Dokploy → Settings → Notifications): Telegram/Discord/email
-3. [ ] Crear el primer superadmin vía `/admin` (con `walter@admin.com` + password)
+3. [ ] Crear el primer superadmin vía `/admin` (o `scripts/seed_superadmin.py` con `SUPERADMIN_EMAIL`/`SUPERADMIN_PASSWORD` propios — sin defaults hardcodeados)
 4. [ ] Configurar el webhook de Meta con la URL real: `https://agencias.tu-dominio.com/webhook/whatsapp`
 5. [ ] Configurar el LLM con la API key real
 6. [ ] Crear el primer cliente y agente de prueba
