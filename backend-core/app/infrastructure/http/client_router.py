@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.auth.approve_client import ApproveClientUseCase
+from app.application.auth.connect_whatsapp import ConnectWhatsappUseCase
 from app.application.auth.disconnect_whatsapp import DisconnectWhatsappUseCase
 from app.application.auth.reject_client import RejectClientUseCase
 from app.application.agent.create_agent import CreateAgentUseCase
@@ -18,6 +19,7 @@ from app.application.dtos import (
     AdminClientOutput,
     AgentToolInput,
     ApproveClientInput,
+    ConnectWhatsappInput,
     CreateAgentInput,
     CreateClientInput,
     CurrentClientOutput,
@@ -44,6 +46,7 @@ from app.infrastructure.http.schemas import (
     ClientListResponse,
     ClientResponse,
     ClientUpdateRequest,
+    ConnectWhatsappRequest,
     agent_output_to_response,
 )
 from app.infrastructure.persistence.agent_repository import SupabaseAgentRepository
@@ -225,6 +228,31 @@ async def disconnect_whatsapp(
 ) -> AdminClientResponse:
     uc = DisconnectWhatsappUseCase(repo)
     inp = DisconnectWhatsappInput(client_id=client_id)
+    try:
+        output = await uc.execute(inp, current_role=current.role)
+    except InvalidClientError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return _admin_output_to_response(output)
+
+
+@router.post("/{client_id}/connect-whatsapp", response_model=AdminClientResponse)
+async def connect_whatsapp(
+    client_id: str,
+    body: ConnectWhatsappRequest,
+    current: CurrentClientOutput = Depends(require_superadmin),
+    repo: SupabaseClientRepository = Depends(get_client_repo),
+) -> AdminClientResponse:
+    """Conecta el número de WhatsApp Cloud API de un tenant (Fase 3.1).
+
+    NO valida el token contra la API de Meta (sin salida de red en
+    sandbox/CI); el token se cifra antes de persistirse.
+    """
+    uc = ConnectWhatsappUseCase(repo)
+    inp = ConnectWhatsappInput(
+        client_id=client_id,
+        phone_number_id=body.phone_number_id,
+        access_token=body.access_token,
+    )
     try:
         output = await uc.execute(inp, current_role=current.role)
     except InvalidClientError as exc:

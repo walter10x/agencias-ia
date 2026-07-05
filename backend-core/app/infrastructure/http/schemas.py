@@ -27,6 +27,17 @@ class ClientUpdateRequest(BaseModel):
         return self
 
 
+class ConnectWhatsappRequest(BaseModel):
+    """Body para conectar el WhatsApp Cloud API de un tenant (Fase 3.1/5.1).
+
+    NO se valida el token contra Meta en esta capa (ni en el use case):
+    el sandbox de desarrollo/CI no tiene salida de red a Meta.
+    """
+
+    phone_number_id: str = Field(..., min_length=1, description="Meta phone_number_id del WABA del tenant")
+    access_token: str = Field(..., min_length=1, description="Access token de Meta Cloud API (se cifra al guardar)")
+
+
 class ClientResponse(BaseModel):
     id: str
     name: str

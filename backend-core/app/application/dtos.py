@@ -823,6 +823,20 @@ class DisconnectWhatsappInput:
 
 
 @dataclass(frozen=True, slots=True)
+class ConnectWhatsappInput:
+    """Input para conectar el número de WhatsApp Cloud API de un tenant.
+
+    NO se hace ninguna llamada de red a Meta para validar las
+    credenciales (decisión explícita de la Fase 3: el sandbox/CI no
+    tiene salida a Meta). El access_token se cifra antes de persistirse.
+    """
+
+    client_id: str
+    phone_number_id: str
+    access_token: str
+
+
+@dataclass(frozen=True, slots=True)
 class AdminClientOutput:
     id: str
     email: str
