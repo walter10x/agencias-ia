@@ -103,6 +103,88 @@ class SupabaseConversationRepository(ConversationRepository):
             return None
         return self._row_to_conversation(result.data[0])
 
+    async def find_by_client_and_phone(
+        self, client_id: str, phone: str
+    ) -> Optional[Conversation]:
+        """Find the most recent conversation for (client_id, wa_phone_number)."""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.CONV_TABLE)
+                .select("*")
+                .eq("client_id", client_id)
+                .eq("wa_phone_number", phone)
+                .order("updated_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_conversation(result.data[0])
+
+    async def save(self, conversation: Conversation) -> None:
+        """Create or update (upsert) a conversation."""
+        row = {
+            "id": str(conversation.id),
+            "client_id": str(conversation.client_id),
+            "agent_id": str(conversation.agent_id) if conversation.agent_id else None,
+            "wa_phone_number": conversation.wa_phone_number,
+            "status": conversation.status,
+            "created_at": conversation.created_at.isoformat(),
+            "updated_at": conversation.updated_at.isoformat(),
+        }
+        try:
+            await asyncio.to_thread(
+                lambda: self._db.table(self.CONV_TABLE)
+                .upsert(row, on_conflict="id")
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+
+    async def append_message(self, message: Message) -> None:
+        """Insert a single message row."""
+        row = {
+            "id": str(message.id),
+            "conversation_id": str(message.conversation_id),
+            "role": message.role,
+            "content": message.content,
+            "tokens_used": message.tokens_used,
+            "status": message.status,
+            "created_at": message.created_at.isoformat(),
+        }
+        try:
+            await asyncio.to_thread(
+                lambda: self._db.table(self.MSG_TABLE)
+                .insert(row)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+
+    async def get_recent_messages(
+        self, conversation_id: str, limit: int = 10
+    ) -> list[Message]:
+        """Get the last N messages in chronological (ASC) order."""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.MSG_TABLE)
+                .select("*")
+                .eq("conversation_id", conversation_id)
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return []
+
+        # DESC en la query para tomar los últimos N; se invierte a ASC.
+        return [self._row_to_message(row) for row in reversed(result.data)]
+
     async def get_stats(self) -> dict:
         """Get global conversation statistics."""
         try:
@@ -203,6 +285,7 @@ class SupabaseConversationRepository(ConversationRepository):
             role=row["role"],
             content=row["content"],
             tokens_used=row.get("tokens_used", 0),
+            status=row.get("status") or "received",
         )
         msg.created_at = datetime.fromisoformat(row["created_at"])
         return msg

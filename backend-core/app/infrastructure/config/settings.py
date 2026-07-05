@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     evolution_api_url: str = ""
     evolution_api_key: str = ""
 
+    # Conversaciones (memoria del agente)
+    conversation_history_limit: int = 10
+
     # WhatsApp Cloud API (Meta)
     whatsapp_phone_number_id: str = ""
     whatsapp_access_token: str = ""
