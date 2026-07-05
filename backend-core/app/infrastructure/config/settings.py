@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     # Generar con: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     credentials_encryption_key: str = ""
 
+    # Recordatorios de cita (Fase 4). Frecuencia del job periódico de
+    # Celery beat que busca y envía recordatorios — ver
+    # app/infrastructure/config/celery_app.py (beat_schedule) y
+    # app/infrastructure/celery/reminders.py (send_appointment_reminders).
+    # Debe coincidir con el intervalo real del beat: la tarea usa este
+    # mismo valor como ancho de la ventana de selección de citas, para
+    # cubrir el tiempo entre ejecuciones sin huecos ni duplicados.
+    reminder_beat_interval_minutes: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:
