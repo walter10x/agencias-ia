@@ -18,6 +18,7 @@ from uuid import UUID
 
 from app.domain.agent.entity import AgentTool
 from app.domain.shared.errors import DomainError
+from app.domain.shared.value_objects import ClientId
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,46 @@ def _build_schedule_repo():
     return SupabaseClientRepository(_build_supabase_client())
 
 
+def _build_client_repo():
+    from app.infrastructure.persistence.client_repository import (
+        SupabaseClientRepository,
+    )
+
+    return SupabaseClientRepository(_build_supabase_client())
+
+
+def _build_appointment_notifier():
+    from app.infrastructure.whatsapp.appointment_notifier import (
+        WhatsAppAppointmentNotifier,
+    )
+
+    return WhatsAppAppointmentNotifier()
+
+
+_WEEKDAY_ES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+_MONTH_ES = [
+    "", "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+]
+
+
+def _format_starts_at_label(iso_value: str) -> str:
+    """Formatea un ISO datetime (UTC) como texto legible en español.
+
+    Nota: se muestra en UTC (no se convierte a la zona del negocio) para
+    mantener el formateo simple en esta capa de tools; es aceptable para
+    el MVP dado que el horario del negocio hoy se configura también en
+    UTC por defecto. Mejora futura: usar BusinessSchedule.timezone.
+    """
+    try:
+        dt = datetime.fromisoformat(iso_value)
+    except ValueError:
+        return iso_value
+    weekday = _WEEKDAY_ES[dt.weekday()]
+    month = _MONTH_ES[dt.month]
+    return f"{weekday} {dt.day} de {month} a las {dt.strftime('%H:%M')}"
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -285,11 +326,44 @@ async def _agendar_cita(
             conversation_id=context.get("conversation_id"),
         )
     )
+
+    # Confirmación por WhatsApp (Fase 2, tarea 2.6) — BEST-EFFORT: un
+    # fallo de envío NUNCA debe deshacer la cita ni propagar una excepción
+    # al LLM. Se loguea y se sigue.
+    await _send_appointment_confirmation(client_id, telefono, output.starts_at)
+
     return (
         f"Cita agendada correctamente para {nombre or 'el cliente'} "
         f"el {output.starts_at} (referencia: {output.id}). "
         "Confirma al cliente la fecha y hora."
     )
+
+
+async def _send_appointment_confirmation(
+    client_id: str, contact_phone: str, starts_at_iso: str
+) -> None:
+    """Envía la confirmación de cita al contacto. Best-effort, nunca lanza."""
+    try:
+        client = await _build_client_repo().find_by_id(ClientId.from_string(client_id))
+        business_name = client.name if client else ""
+        label = _format_starts_at_label(starts_at_iso)
+        notifier = _build_appointment_notifier()
+        sent = await notifier.send_confirmation(
+            client_id=client_id,
+            contact_phone=contact_phone,
+            business_name=business_name,
+            starts_at_label=label,
+        )
+        if not sent:
+            logger.warning(
+                f"No se pudo enviar la confirmación de cita por WhatsApp "
+                f"(client_id={client_id}, contact_phone={contact_phone[:4]}...)."
+            )
+    except Exception:  # noqa: BLE001 — best-effort, la cita ya se creó
+        logger.exception(
+            f"Error inesperado enviando confirmación de cita "
+            f"(client_id={client_id})"
+        )
 
 
 async def _cancelar_cita(
