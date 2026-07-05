@@ -7,6 +7,8 @@ from fastapi.responses import JSONResponse
 
 from app.domain.shared.errors import (
     AgentNotFoundError,
+    AppointmentNotFoundError,
+    AppointmentOverlapError,
     ClientNotFoundError,
     ConversationNotFoundError,
     DomainError,
@@ -14,6 +16,7 @@ from app.domain.shared.errors import (
     FeedbackNotFoundError,
     ForbiddenError,
     InvalidAgentError,
+    InvalidAppointmentError,
     InvalidClientError,
     InvalidFeedbackError,
     InvalidLeadError,
@@ -22,6 +25,7 @@ from app.domain.shared.errors import (
     LandingNotFoundError,
     LandingRateLimitError,
     LeadNotFoundError,
+    OutsideBusinessHoursError,
     ProactiveMessageLimitError,
     TemplateNotFoundError,
 )
@@ -153,6 +157,34 @@ async def email_error_handler(request: Request, exc: EmailError) -> JSONResponse
     )
 
 
+async def appointment_overlap_handler(request: Request, exc: AppointmentOverlapError) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={"error_type": "appointment_overlap", "detail": exc.message},
+    )
+
+
+async def outside_business_hours_handler(request: Request, exc: OutsideBusinessHoursError) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={"error_type": "outside_business_hours", "detail": exc.message},
+    )
+
+
+async def invalid_appointment_handler(request: Request, exc: InvalidAppointmentError) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={"error_type": "invalid_appointment", "detail": exc.message},
+    )
+
+
+async def appointment_not_found_handler(request: Request, exc: AppointmentNotFoundError) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content={"error_type": "appointment_not_found", "detail": exc.message},
+    )
+
+
 def register_error_handlers(app):
     """Register all domain exception handlers on a FastAPI app.
 
@@ -176,4 +208,9 @@ def register_error_handlers(app):
     app.add_exception_handler(LandingRateLimitError, landing_rate_limit_handler)
     app.add_exception_handler(ForbiddenError, forbidden_error_handler)
     app.add_exception_handler(EmailError, email_error_handler)
+    # Appointment: subclases (overlap, outside hours) antes que la base
+    app.add_exception_handler(AppointmentOverlapError, appointment_overlap_handler)
+    app.add_exception_handler(OutsideBusinessHoursError, outside_business_hours_handler)
+    app.add_exception_handler(InvalidAppointmentError, invalid_appointment_handler)
+    app.add_exception_handler(AppointmentNotFoundError, appointment_not_found_handler)
     app.add_exception_handler(DomainError, domain_error_handler)

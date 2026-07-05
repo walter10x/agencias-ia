@@ -102,6 +102,26 @@ class EmailError(DomainError):
     pass
 
 
+class InvalidAppointmentError(DomainError):
+    """Error cuando los datos de la cita son inválidos (pasado, formato, estado)."""
+    pass
+
+
+class AppointmentNotFoundError(DomainError):
+    """Error cuando la cita no existe (o pertenece a otro tenant)."""
+    pass
+
+
+class AppointmentOverlapError(InvalidAppointmentError):
+    """Error cuando la cita se solapa con otra cita activa."""
+    pass
+
+
+class OutsideBusinessHoursError(InvalidAppointmentError):
+    """Error cuando la cita cae fuera del horario del negocio."""
+    pass
+
+
 # ============================================================================
 # Auth — Fase 1 multi-tenant
 # ============================================================================

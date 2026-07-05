@@ -57,6 +57,15 @@ def get_lead_repo(
     return SupabaseLeadRepository(client)
 
 
+def get_appointment_repo(
+    client: SupabaseHttpClient = Depends(_get_supabase_client),
+) -> "SupabaseAppointmentRepository":
+    from app.infrastructure.persistence.appointment_repository import (
+        SupabaseAppointmentRepository,
+    )
+    return SupabaseAppointmentRepository(client)
+
+
 def get_template_service() -> "TemplateService":
     """FastAPI dependency: yields a TemplateService singleton."""
     from app.infrastructure.templates.data import TemplateService
