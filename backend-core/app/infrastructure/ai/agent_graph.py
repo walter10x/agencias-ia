@@ -110,13 +110,14 @@ async def process_tools_node(state: AgentState) -> AgentState:
         tool_input = tc.get("arguments", {})
         tool_call_id = tc.get("id", "")
 
-        # Extraer input del tool call
-        if isinstance(tool_input, dict):
-            input_str = tool_input.get("input", str(tool_input))
-        else:
-            input_str = str(tool_input)
-
-        result_content = await execute_tool(tool_name, input_str)
+        # Se pasan los argumentos completos (dict o string) y el contexto
+        # del tenant: las tools nativas necesitan el client_id para
+        # ejecutar los use cases scoped por negocio.
+        result_content = await execute_tool(
+            tool_name,
+            tool_input,
+            state.get("client_context", {}),
+        )
 
         results.append({
             "tool_call_id": tool_call_id,
