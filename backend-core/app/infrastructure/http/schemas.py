@@ -169,6 +169,7 @@ class MessageResponse(BaseModel):
     conversation_id: str
     role: str
     content: str
+    status: str = "received"
     tokens_used: int = 0
     created_at: str
 

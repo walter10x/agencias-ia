@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Bot, Users, MessageSquare, ChevronLeft, ChevronRight, LogOut, LayoutTemplate, User, FileText } from "lucide-react";
+import { Bot, Users, MessageSquare, ChevronLeft, ChevronRight, LogOut, LayoutTemplate, User, FileText, CalendarDays } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface SidebarProps {
@@ -137,6 +137,7 @@ export default function Sidebar({ className = "", onCloseMobile }: SidebarProps)
               </div>
             )}
             <NavItem to="/app/conversations" icon={MessageSquare} label="Conversaciones" onCloseMobile={onCloseMobile} isCollapsed={isCollapsed} />
+            <NavItem to="/app/appointments" icon={CalendarDays} label="Agenda" onCloseMobile={onCloseMobile} isCollapsed={isCollapsed} />
             <NavItem to="/app/leads" icon={FileText} label="Leads" onCloseMobile={onCloseMobile} isCollapsed={isCollapsed} />
             <NavItem to="/app/profile" icon={User} label="Perfil" onCloseMobile={onCloseMobile} isCollapsed={isCollapsed} />
           </div>
