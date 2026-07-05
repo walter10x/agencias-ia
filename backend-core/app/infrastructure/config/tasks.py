@@ -28,6 +28,7 @@ from app.infrastructure.persistence.agent_repository import SupabaseAgentReposit
 from app.infrastructure.persistence.conversation_repository import (
     SupabaseConversationRepository,
 )
+from app.infrastructure.whatsapp.sender import WhatsAppSender
 
 logger = get_task_logger(__name__)
 
@@ -126,7 +127,7 @@ def process_whatsapp_message(
             loop.close()
 
         # --- Paso 8: Enviar respuesta vía WhatsApp (Meta Cloud API) ---
-        send_status = _send_whatsapp_message(phone, reply, settings)
+        send_status = _send_whatsapp_message(client_id, phone, reply, settings)
 
         # --- Paso 9: Guardar respuesta con estado real del envío ---
         if conversation is not None:
@@ -283,42 +284,92 @@ def _persist_agent_reply_sync(
         logger.error(f"[PERSISTENCE] Could not persist agent reply: {e}")
 
 
-def _send_whatsapp_message(phone: str, text: str, settings) -> str:
-    """Send WhatsApp message via Meta Cloud API.
+def _resolve_whatsapp_credentials_sync(client_id: str) -> tuple[str, str, bool]:
+    """Resuelve (phone_number_id, access_token, is_client_owned) para el envío.
+
+    Estrategia de fallback (Fase 3, tarea 3.2):
+    1. Si el cliente tiene credenciales propias (phone_number_id + token
+       descifrado no vacíos) → se usan esas, is_client_owned=True.
+    2. Si no → fallback a las credenciales GLOBALES de env
+       (settings.whatsapp_phone_number_id/access_token), pensadas para
+       el número de pruebas único del MVP. Se loguea claramente que se
+       usó el fallback global, para poder auditar qué tenants aún no
+       tienen credenciales propias configuradas.
+    3. Si tampoco hay credenciales globales → ("", "", False); el
+       llamador debe tratarlo como "skipped" (comportamiento actual).
+    """
+    settings = get_settings()
+
+    try:
+        from app.infrastructure.http.supabase_client import SupabaseHttpClient
+        from app.infrastructure.persistence.client_repository import (
+            SupabaseClientRepository,
+        )
+
+        db = SupabaseHttpClient(settings.supabase_url, settings.supabase_service_key)
+        repo = SupabaseClientRepository(db)
+
+        loop = asyncio.new_event_loop()
+        try:
+            creds = loop.run_until_complete(repo.get_whatsapp_credentials(client_id))
+        finally:
+            loop.close()
+
+        if creds.has_credentials:
+            return creds.phone_number_id, creds.access_token, True
+    except Exception as exc:  # noqa: BLE001 — nunca debe tumbar el envío
+        logger.error(f"[WHATSAPP] Error resolviendo credenciales del tenant {client_id}: {exc}")
+
+    # Fallback: credenciales globales de env (número de pruebas del MVP).
+    if settings.whatsapp_phone_number_id and settings.whatsapp_access_token:
+        logger.warning(
+            f"[WHATSAPP] client_id={client_id} sin credenciales propias — "
+            "usando credenciales GLOBALES de env (fallback MVP). Configura "
+            "credenciales propias vía /clients/{client_id}/connect-whatsapp."
+        )
+        return settings.whatsapp_phone_number_id, settings.whatsapp_access_token, False
+
+    return "", "", False
+
+
+def _send_whatsapp_message(client_id: str, phone: str, text: str, settings) -> str:
+    """Send WhatsApp message via Meta Cloud API, con credenciales por tenant.
+
+    Resuelve las credenciales del cliente (tarea 3.2); si el cliente no
+    tiene credenciales propias, aplica el fallback a las credenciales
+    globales de env (necesario mientras solo exista el número de pruebas
+    único del MVP). Sin credenciales en NINGÚN nivel, el comportamiento
+    es idéntico al anterior: se loguea y se retorna "skipped" (el
+    mensaje no se envía, no se simula un envío exitoso).
 
     Returns:
         "sent" si Meta confirmó el envío, "failed" si el envío falló,
-        "skipped" si Meta no está configurado (el mensaje NO se envía).
+        "skipped" si no hay credenciales disponibles en ningún nivel.
     """
-    if not settings.whatsapp_access_token or not settings.whatsapp_phone_number_id:
+    phone_number_id, access_token, _is_client_owned = _resolve_whatsapp_credentials_sync(
+        client_id
+    )
+
+    if not phone_number_id or not access_token:
         logger.warning(
-            "[WHATSAPP] Meta not configured — message NOT sent (status=skipped)"
+            "[WHATSAPP] Sin credenciales (ni del tenant ni globales) — "
+            "message NOT sent (status=skipped)"
         )
         logger.info(f"[WHATSAPP] To: {phone} | {text[:100]}")
         return "skipped"
 
-    import httpx
-    try:
-        url = (
-            f"https://graph.facebook.com/{settings.whatsapp_api_version}"
-            f"/{settings.whatsapp_phone_number_id}/messages"
+    sender = WhatsAppSender(api_version=settings.whatsapp_api_version)
+    result = sender.send(
+        phone_number_id=phone_number_id,
+        access_token=access_token,
+        to=phone,
+        text=text,
+    )
+
+    if not result.ok:
+        logger.error(
+            f"[WHATSAPP] Envío fallido a {phone} (categoria={result.status.value}): "
+            f"{result.detail}"
         )
-        resp = httpx.post(
-            url,
-            json={
-                "messaging_product": "whatsapp",
-                "to": phone,
-                "text": {"body": text},
-            },
-            headers={"Authorization": f"Bearer {settings.whatsapp_access_token}"},
-            timeout=10,
-        )
-        if resp.is_success:
-            logger.info(f"[WHATSAPP] Sent to {phone}")
-            return "sent"
-        else:
-            logger.error(f"[WHATSAPP] Failed: {resp.text}")
-            return "failed"
-    except Exception as e:
-        logger.error(f"[WHATSAPP] Error: {e}")
-        return "failed"
+
+    return result.to_legacy_status()

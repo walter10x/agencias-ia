@@ -292,6 +292,10 @@ class TestPersistenceResilience:
 
 
 class TestSendWhatsAppMessage:
+    """Fase 3: _send_whatsapp_message ahora resuelve credenciales por
+    client_id (con fallback a env) antes de delegar en WhatsAppSender.
+    """
+
     def _settings(self, *, token: str = "tok", phone_id: str = "12345"):
         return SimpleNamespace(
             whatsapp_access_token=token,
@@ -299,40 +303,176 @@ class TestSendWhatsAppMessage:
             whatsapp_api_version="v22.0",
         )
 
-    def test_returns_skipped_when_meta_not_configured(self) -> None:
+    def test_returns_skipped_when_no_credentials_anywhere(self) -> None:
         settings = self._settings(token="", phone_id="")
 
-        status = tasks_module._send_whatsapp_message(PHONE, "Hola", settings)
+        with patch.object(
+            tasks_module,
+            "_resolve_whatsapp_credentials_sync",
+            return_value=("", "", False),
+        ):
+            status = tasks_module._send_whatsapp_message(
+                str(CLIENT_UUID), PHONE, "Hola", settings
+            )
 
         assert status == "skipped"
 
-    def test_returns_sent_on_success(self) -> None:
+    def test_returns_sent_on_success_with_client_credentials(self) -> None:
         settings = self._settings()
         resp = MagicMock(is_success=True)
 
-        with patch("httpx.post", return_value=resp) as post_mock:
-            status = tasks_module._send_whatsapp_message(PHONE, "Hola", settings)
+        with (
+            patch.object(
+                tasks_module,
+                "_resolve_whatsapp_credentials_sync",
+                return_value=("client-pnid", "client-token", True),
+            ),
+            patch("httpx.post", return_value=resp) as post_mock,
+        ):
+            status = tasks_module._send_whatsapp_message(
+                str(CLIENT_UUID), PHONE, "Hola", settings
+            )
 
         assert status == "sent"
         url = post_mock.call_args[0][0]
         assert "graph.facebook.com" in url
-        assert "12345" in url
+        assert "client-pnid" in url
         headers = post_mock.call_args.kwargs["headers"]
-        assert headers["Authorization"] == "Bearer tok"
+        assert headers["Authorization"] == "Bearer client-token"
 
     def test_returns_failed_on_http_error(self) -> None:
         settings = self._settings()
-        resp = MagicMock(is_success=False, text="invalid token")
+        resp = MagicMock(is_success=False, status_code=401)
+        resp.json.return_value = {"error": {"code": 190}}
 
-        with patch("httpx.post", return_value=resp):
-            status = tasks_module._send_whatsapp_message(PHONE, "Hola", settings)
+        with (
+            patch.object(
+                tasks_module,
+                "_resolve_whatsapp_credentials_sync",
+                return_value=("pnid", "bad-token", True),
+            ),
+            patch("httpx.post", return_value=resp),
+        ):
+            status = tasks_module._send_whatsapp_message(
+                str(CLIENT_UUID), PHONE, "Hola", settings
+            )
 
         assert status == "failed"
 
     def test_returns_failed_on_exception(self) -> None:
         settings = self._settings()
 
-        with patch("httpx.post", side_effect=ConnectionError("no network")):
-            status = tasks_module._send_whatsapp_message(PHONE, "Hola", settings)
+        with (
+            patch.object(
+                tasks_module,
+                "_resolve_whatsapp_credentials_sync",
+                return_value=("pnid", "token", True),
+            ),
+            patch("httpx.post", side_effect=ConnectionError("no network")),
+        ):
+            status = tasks_module._send_whatsapp_message(
+                str(CLIENT_UUID), PHONE, "Hola", settings
+            )
 
         assert status == "failed"
+
+
+class TestResolveWhatsappCredentials:
+    """Fase 3, tarea 3.2 — estrategia de fallback de credenciales."""
+
+    def test_uses_client_credentials_when_available(self) -> None:
+        settings = SimpleNamespace(
+            whatsapp_access_token="global-token",
+            whatsapp_phone_number_id="global-pnid",
+        )
+        fake_creds = SimpleNamespace(
+            phone_number_id="tenant-pnid",
+            access_token="tenant-token",
+            has_credentials=True,
+        )
+        fake_repo = MagicMock()
+        fake_repo.get_whatsapp_credentials = AsyncMock(return_value=fake_creds)
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=settings),
+            patch(
+                "app.infrastructure.persistence.client_repository.SupabaseClientRepository",
+                return_value=fake_repo,
+            ),
+        ):
+            phone_number_id, token, is_owned = tasks_module._resolve_whatsapp_credentials_sync(
+                str(CLIENT_UUID)
+            )
+
+        assert phone_number_id == "tenant-pnid"
+        assert token == "tenant-token"
+        assert is_owned is True
+
+    def test_falls_back_to_global_env_when_client_has_no_credentials(self) -> None:
+        settings = SimpleNamespace(
+            whatsapp_access_token="global-token",
+            whatsapp_phone_number_id="global-pnid",
+        )
+        fake_creds = SimpleNamespace(phone_number_id="", access_token="", has_credentials=False)
+        fake_repo = MagicMock()
+        fake_repo.get_whatsapp_credentials = AsyncMock(return_value=fake_creds)
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=settings),
+            patch(
+                "app.infrastructure.persistence.client_repository.SupabaseClientRepository",
+                return_value=fake_repo,
+            ),
+        ):
+            phone_number_id, token, is_owned = tasks_module._resolve_whatsapp_credentials_sync(
+                str(CLIENT_UUID)
+            )
+
+        assert phone_number_id == "global-pnid"
+        assert token == "global-token"
+        assert is_owned is False
+
+    def test_returns_empty_when_no_credentials_anywhere(self) -> None:
+        settings = SimpleNamespace(whatsapp_access_token="", whatsapp_phone_number_id="")
+        fake_creds = SimpleNamespace(phone_number_id="", access_token="", has_credentials=False)
+        fake_repo = MagicMock()
+        fake_repo.get_whatsapp_credentials = AsyncMock(return_value=fake_creds)
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=settings),
+            patch(
+                "app.infrastructure.persistence.client_repository.SupabaseClientRepository",
+                return_value=fake_repo,
+            ),
+        ):
+            phone_number_id, token, is_owned = tasks_module._resolve_whatsapp_credentials_sync(
+                str(CLIENT_UUID)
+            )
+
+        assert phone_number_id == ""
+        assert token == ""
+        assert is_owned is False
+
+    def test_repo_exception_falls_back_to_global_env(self) -> None:
+        """Un error resolviendo credenciales del tenant no debe tumbar el envío."""
+        settings = SimpleNamespace(
+            whatsapp_access_token="global-token",
+            whatsapp_phone_number_id="global-pnid",
+        )
+        fake_repo = MagicMock()
+        fake_repo.get_whatsapp_credentials = AsyncMock(side_effect=RuntimeError("db down"))
+
+        with (
+            patch.object(tasks_module, "get_settings", return_value=settings),
+            patch(
+                "app.infrastructure.persistence.client_repository.SupabaseClientRepository",
+                return_value=fake_repo,
+            ),
+        ):
+            phone_number_id, token, is_owned = tasks_module._resolve_whatsapp_credentials_sync(
+                str(CLIENT_UUID)
+            )
+
+        assert phone_number_id == "global-pnid"
+        assert token == "global-token"
+        assert is_owned is False
