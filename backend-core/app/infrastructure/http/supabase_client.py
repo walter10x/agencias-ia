@@ -96,6 +96,15 @@ class _TableQuery:
         self._filter_params.append((column, f"in.({joined})"))
         return self
 
+    def is_(self, column: str, value: str) -> _TableQuery:
+        """Filtro PostgREST `is` — para comparar contra NULL/true/false.
+
+        PostgREST exige el operador `is` (no `eq`) para NULL: `eq.null`
+        no es válido. Uso: `.is_("reminder_sent_at", "null")`.
+        """
+        self._filter_params.append((column, f"is.{value}"))
+        return self
+
     def order(self, column: str, *, desc: bool = False, nullsfirst: bool = False) -> _TableQuery:
         direction = f"{column}.desc" if desc else column
         if nullsfirst:

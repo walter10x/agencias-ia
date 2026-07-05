@@ -77,6 +77,38 @@ class AppointmentRepository(ABC):
         """Próxima cita activa de un contacto (para cancelar desde el bot)."""
         ...
 
+    @abstractmethod
+    async def find_reminder_candidates(
+        self,
+        starts_from: datetime,
+        starts_to: datetime,
+    ) -> list[Appointment]:
+        """Citas candidatas a recordatorio (Fase 4), CROSS-TENANT.
+
+        Retorna citas con status in (pending, confirmed),
+        reminder_sent_at IS NULL, y starts_at en [starts_from, starts_to).
+
+        El rango es deliberadamente amplio (ver
+        app.infrastructure.celery.reminders): el offset de recordatorio
+        es configurable por cliente (JSONB de `clients`), así que no se
+        puede aplicar en la propia query SQL sin un join dinámico por
+        tenant. La estrategia es traer todas las citas candidatas en un
+        rango amplio (ej. próximas ~48h) y filtrar en Python comparando
+        cada `starts_at` contra el offset específico de su cliente.
+        """
+        ...
+
+
+    @abstractmethod
+    async def mark_reminder_sent(self, appointment_id: str) -> None:
+        """Marca reminder_sent_at = now() (y updated_at) tras un envío exitoso.
+
+        Idempotente a nivel de uso: si ya estaba marcado, volver a
+        marcarlo no causa un reenvío (el filtro de selección de
+        candidatos exige reminder_sent_at IS NULL).
+        """
+        ...
+
 
 class BusinessScheduleRepository(ABC):
     """Puerto de solo lectura para el horario del negocio.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -184,6 +184,49 @@ class SupabaseAppointmentRepository(AppointmentRepository):
         if not result.data:
             return None
         return self._row_to_appointment(result.data[0])
+
+    async def find_reminder_candidates(
+        self,
+        starts_from: datetime,
+        starts_to: datetime,
+    ) -> list[Appointment]:
+        # Query CROSS-TENANT deliberada (Fase 4, tarea 4.2/6a): el offset
+        # de recordatorio es por-cliente (JSONB de `clients`), así que no
+        # se puede filtrar con precisión en SQL sin un join dinámico por
+        # tenant. En su lugar se trae un rango amplio (definido por el
+        # llamador, ver app.infrastructure.celery.reminders — típicamente
+        # próximas ~48h) con status activo y reminder_sent_at IS NULL, y
+        # el llamador filtra en Python comparando cada starts_at contra
+        # el offset específico de su cliente.
+        blocking = sorted(s.value for s in AppointmentStatus.blocking_statuses())
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .gte("starts_at", starts_from.isoformat())
+                .lt("starts_at", starts_to.isoformat())
+                .in_("status", blocking)
+                .is_("reminder_sent_at", "null")
+                .order("starts_at")
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return []
+
+        return [self._row_to_appointment(row) for row in result.data]
+
+    async def mark_reminder_sent(self, appointment_id: str) -> None:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .update({"reminder_sent_at": now_iso, "updated_at": now_iso})
+                .eq("id", appointment_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
 
     @staticmethod
     def _row_to_appointment(row: dict) -> Appointment:
