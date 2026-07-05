@@ -19,6 +19,7 @@ const ConversationsPage = lazy(() => import("@/pages/ConversationsPage"));
 const ConversationDetailPage = lazy(() => import("@/pages/ConversationDetailPage"));
 const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 const LeadDetailPage = lazy(() => import("@/pages/LeadDetailPage"));
+const AppointmentsPage = lazy(() => import("@/pages/AppointmentsPage"));
 const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
 const TemplateApplyPage = lazy(() => import("@/pages/TemplateApplyPage"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
@@ -104,6 +105,7 @@ export default function App() {
                     <Route path="/app/conversations/:id" element={<ConversationDetailPage />} />
                     <Route path="/app/leads" element={<LeadsPage />} />
                     <Route path="/app/leads/:id" element={<LeadDetailPage />} />
+                    <Route path="/app/appointments" element={<AppointmentsPage />} />
                     <Route path="/app/templates" element={<TemplatesPage />} />
                     <Route path="/app/templates/:slug/apply" element={<TemplateApplyPage />} />
                     <Route path="/app/profile" element={null} />
