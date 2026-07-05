@@ -10,13 +10,18 @@ from uuid import UUID
 import httpx
 from app.infrastructure.http.supabase_client import SupabaseHttpClient
 
+from app.domain.appointment.entity import (
+    DEFAULT_APPOINTMENT_DURATION_MINUTES,
+    BusinessSchedule,
+)
+from app.domain.appointment.repository import BusinessScheduleRepository
 from app.domain.client.entity import Client
 from app.domain.client.repository import ClientRepository
 from app.domain.shared.errors import DomainError, InvalidClientError
 from app.domain.shared.value_objects import BusinessType, ClientId, Email, PasswordHash, WhatsAppNumber
 
 
-class SupabaseClientRepository(ClientRepository):
+class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
     """Supabase implementation of ClientRepository.
 
     Uses supabase-py sync client wrapped in asyncio.to_thread.
@@ -118,6 +123,57 @@ class SupabaseClientRepository(ClientRepository):
             return []
 
         return [self._row_to_client(row) for row in result.data]
+
+    # ------------------------------------------------------------------
+    # BusinessScheduleRepository port (módulo de agenda — solo lectura)
+    # ------------------------------------------------------------------
+
+    async def get_business_schedule(self, client_id: str) -> Optional[BusinessSchedule]:
+        """Lee el horario del negocio desde las columnas de config del tenant.
+
+        Retorna None si el cliente no existe. Si las columnas vienen
+        vacías o con formato inesperado, retorna el horario por defecto
+        para no romper la agenda.
+        """
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("id,business_hours,appointment_duration_minutes")
+                .eq("id", client_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_schedule(result.data[0])
+
+    @staticmethod
+    def _row_to_schedule(row: dict) -> BusinessSchedule:
+        raw = row.get("business_hours") or {}
+        if not isinstance(raw, dict):
+            raw = {}
+        weekly_raw = raw.get("weekly") or {}
+        weekly: dict[str, list[tuple[str, str]]] = {}
+        for day, ranges in weekly_raw.items():
+            parsed_ranges: list[tuple[str, str]] = []
+            for item in ranges or []:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    parsed_ranges.append((str(item[0]), str(item[1])))
+            weekly[str(day).lower()] = parsed_ranges
+
+        kwargs: dict = {
+            "appointment_duration_minutes": int(
+                row.get("appointment_duration_minutes")
+                or DEFAULT_APPOINTMENT_DURATION_MINUTES
+            ),
+            "timezone": str(raw.get("timezone") or "UTC"),
+        }
+        if weekly:
+            kwargs["weekly_hours"] = weekly
+        return BusinessSchedule(**kwargs)
 
     # ------------------------------------------------------------------
     # Private mappers
