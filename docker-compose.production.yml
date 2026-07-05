@@ -72,6 +72,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
+      # Clave Fernet para cifrar el access_token de WhatsApp por tenant.
+      # Generar con: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      # Sin esta variable, el cifrado degrada a un fallback base64 INSEGURO
+      # (ver app/infrastructure/security/credentials_cipher.py) — NUNCA
+      # dejar vacío en producción real.
+      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:-}
 
       # === App ===
       DEBUG: ${DEBUG:-false}
@@ -214,6 +220,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
+      # Ver comentario en el servicio "backend" — misma clave, mismo tenant.
+      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:-}
       DEBUG: ${DEBUG:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-[]}
     depends_on:

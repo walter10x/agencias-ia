@@ -21,6 +21,10 @@ services:
     container_name: agencia-backend
     ports:
       - "8000:8000"
+    # NOTA (Fase 3): añade CREDENTIALS_ENCRYPTION_KEY=<placeholder> a
+    # backend-core/.env para cifrado real de tokens de WhatsApp por tenant.
+    # Generar con: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # NUNCA versionar un valor real — .env está gitignored.
     env_file:
       - ./backend-core/.env
     depends_on:
@@ -137,6 +141,8 @@ services:
     build: ./backend-core
     container_name: agencia-celery
     command: celery -A app.infrastructure.config.celery_app worker --loglevel=info
+    # Comparte backend-core/.env — ver nota de CREDENTIALS_ENCRYPTION_KEY
+    # en el servicio "backend" (misma clave, mismo proceso de cifrado).
     env_file:
       - ./backend-core/.env
     depends_on:
