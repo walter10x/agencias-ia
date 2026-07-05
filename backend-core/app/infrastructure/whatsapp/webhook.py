@@ -127,6 +127,9 @@ async def _handle_meta_message(
         for change in entry.changes:
             value = change.value
             contacts = {c.wa_id: c.profile.get("name", "") for c in value.contacts}
+            # Routing multi-tenant (Fase 3.3): Meta identifica el número
+            # receptor (y por tanto el tenant) en value.metadata.phone_number_id.
+            phone_number_id = value.metadata.phone_number_id
 
             for msg in value.messages:
                 if msg.type != "text":
@@ -143,6 +146,7 @@ async def _handle_meta_message(
                         push_name=push_name,
                         client_repo=client_repo,
                         agent_repo=agent_repo,
+                        phone_number_id=phone_number_id,
                     )
 
     return WebhookResponse(status="ignored", reason="no_text_messages")

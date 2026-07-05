@@ -144,9 +144,21 @@ class MetaContact(BaseModel):
     profile: dict = Field(default_factory=dict)
     wa_id: str = ""
 
+class MetaMetadata(BaseModel):
+    """Bloque `metadata` del payload de Meta — identifica el número receptor.
+
+    `phone_number_id` es la clave del routing multi-tenant (Fase 3.3):
+    Meta lo incluye en cada `value.metadata` y coincide con el
+    `phone_number_id` que cada tenant configura al conectar su WhatsApp.
+    """
+
+    display_phone_number: str = ""
+    phone_number_id: str = ""
+
 class MetaValue(BaseModel):
     messages: list[MetaMessage] = Field(default_factory=list)
     contacts: list[MetaContact] = Field(default_factory=list)
+    metadata: MetaMetadata = Field(default_factory=MetaMetadata)
 
 class MetaChange(BaseModel):
     value: MetaValue = Field(default_factory=MetaValue)

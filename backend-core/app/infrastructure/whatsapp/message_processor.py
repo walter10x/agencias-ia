@@ -95,8 +95,20 @@ async def process_whatsapp_message(
     push_name: str = "",
     client_repo: ClientRepository = None,
     agent_repo: AgentRepository = None,
+    phone_number_id: str = "",
 ) -> WebhookResponse:
-    """Process WhatsApp message from any source (Meta, Evolution, etc)."""
+    """Process WhatsApp message from any source (Meta, Evolution, etc).
+
+    Args:
+        phone_number_id: Si se provee (Meta Cloud API), se usa para
+            resolver el tenant multi-tenant vía
+            `client_repo.find_by_phone_number_id` (Fase 3.3), en lugar
+            de por `whatsapp_number`. Si no se encuentra ningún cliente
+            con ese `phone_number_id`, se hace FALLBACK al lookup
+            anterior por número de WhatsApp del contacto (comportamiento
+            previo a Fase 3, útil mientras no todos los tenants tienen
+            `phone_number_id` configurado).
+    """
     if not text or not text.strip():
         return WebhookResponse(status="ignored", reason="empty_message")
 
@@ -105,7 +117,15 @@ async def process_whatsapp_message(
     except ValueError:
         return WebhookResponse(status="ignored", reason="invalid_phone")
 
-    client = await client_repo.find_by_whatsapp(str(wa))
+    client = None
+    if phone_number_id:
+        client = await client_repo.find_by_phone_number_id(phone_number_id)
+
+    if client is None:
+        # Fallback: comportamiento previo a Fase 3 (Evolution API o Meta
+        # sin phone_number_id resuelto / tenant aún no migrado).
+        client = await client_repo.find_by_whatsapp(str(wa))
+
     if client is None:
         return WebhookResponse(status="ignored", reason="no_client")
     if not client.is_active:
