@@ -233,6 +233,44 @@ services:
     networks:
       - agencia-net
 
+  # Scheduler de tareas periódicas (Fase 4): dispara send_appointment_reminders
+  # según el beat_schedule de celery_app.py. DEBE correr como proceso ÚNICO
+  # (exactamente un beat en todo el despliegue) además del worker; sin él,
+  # los recordatorios de cita no se envían nunca.
+  celery-beat:
+    build: ./backend-core
+    container_name: agencia-celery-beat
+    command: celery -A app.infrastructure.config.celery_app beat --loglevel=info
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL:-http://postgrest-proxy:3000}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-local-no-auth-needed}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-my-verify-token}
+      N8N_URL: ${N8N_URL:-http://n8n:5678}
+      N8N_API_KEY: ${N8N_API_KEY:-}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
+      # Ver comentario en el servicio "backend" — misma clave, mismo tenant.
+      CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:-}
+      DEBUG: ${DEBUG:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-[]}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
 volumes:
   postgres-data:
   n8n-data:

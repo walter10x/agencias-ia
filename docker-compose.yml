@@ -160,6 +160,24 @@ services:
     networks:
       - agencia-net
 
+  # Scheduler de tareas periódicas (Fase 4): dispara send_appointment_reminders
+  # según el beat_schedule de celery_app.py. DEBE correr como proceso único
+  # (un solo beat) además del worker; sin él, los recordatorios no se envían.
+  celery-beat:
+    build: ./backend-core
+    container_name: agencia-celery-beat
+    command: celery -A app.infrastructure.config.celery_app beat --loglevel=info
+    env_file:
+      - ./backend-core/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend-core/app:/app/app
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
 volumes:
   n8n-data:
   postgres-data:
