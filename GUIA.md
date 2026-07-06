@@ -15,7 +15,7 @@
 5. [Configurar `.env` — variables de entorno](#5-configurar-env--variables-de-entorno)
 6. [Levantar todo con Docker](#6-levantar-todo-con-docker)
 7. [Probar la API](#7-probar-la-api)
-8. [Conectar WhatsApp (OpenWA)](#8-conectar-whatsapp-openwa)
+8. [Conectar WhatsApp (Meta Cloud API)](#8-conectar-whatsapp-meta-cloud-api)
 9. [n8n — Flujos de automatización](#9-n8n--flujos-de-automatización)
 10. [Flujo completo de prueba](#10-flujo-completo-de-prueba)
 11. [Leads y Prospección Automática](#11-leads-y-prospección-automática)
@@ -66,7 +66,6 @@ cd Agencia-ia-Au
 ```
 Agencia-ia-Au/
 ├── docker-compose.yml          ← Orquesta todos los servicios
-├── evolution-api.env            ← Config de Evolution API (WhatsApp)
 ├── GUIA.md                      ← Esta guía :)
 │
 ├── backend-core/                ← Motor de IA (FastAPI + LangGraph)
@@ -101,8 +100,8 @@ Agencia-ia-Au/
 | **backend** | `8000` | API FastAPI — lógica de negocio, CRUD de clientes/agentes, webhook WhatsApp |
 | **redis** | `6379` | Caché y broker de mensajes para Celery |
 | **celery-worker** | — | Tareas asíncronas (procesar mensajes, generar PDFs, embeddings) |
-| **openwa** | `8080` | WhatsApp Gateway gratuito — conecta tu número de WhatsApp |
-| **n8n** | `5678` | Automatización visual — flujos secundarios (ej: enviar recordatorios, sincronizar CRM) |
+| **celery-beat** | — | Scheduler de tareas periódicas (recordatorios de citas) |
+| **n8n** | `5678` | Automatización visual — flujos secundarios (ej: sincronizar CRM) |
 
 ---
 
@@ -338,10 +337,10 @@ LLM_MODEL=gpt-4o-mini
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 
-# === Evolution API / WhatsApp Gateway ===
-# Si usas OpenWA (el que viene en docker-compose):
-EVOLUTION_API_URL=http://openwa:8080
-EVOLUTION_API_KEY=mi-secreto-whatsapp-cambiar
+# === WhatsApp Cloud API (Meta) ===
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_VERIFY_TOKEN=my-verify-token
 
 # === n8n Automatización ===
 N8N_URL=http://n8n:5678
@@ -402,7 +401,6 @@ agencia-frontend    Up              0.0.0.0:5050->80/tcp
 agencia-backend     Up              0.0.0.0:8000->8000/tcp
 agencia-redis       Up (healthy)    0.0.0.0:6379->6379/tcp
 agencia-celery      Up
-agencia-openwa      Up              0.0.0.0:8080->8080/tcp
 agencia-n8n         Up              0.0.0.0:5678->5678/tcp
 ```
 
@@ -413,7 +411,6 @@ agencia-n8n         Up              0.0.0.0:5678->5678/tcp
 | `http://localhost:5050` | Dashboard — panel de control para gestionar clientes y agentes |
 | `http://localhost:8000/docs` | Swagger de la API — probar endpoints manualmente |
 | `http://localhost:8000/health` | Health check — responde `{"status":"ok"}` |
-| `http://localhost:8080` | OpenWA — WhatsApp Gateway (escanear QR) |
 | `http://localhost:5678` | n8n — editor visual de automatizaciones |
 
 ### Comandos útiles de Docker
@@ -421,7 +418,7 @@ agencia-n8n         Up              0.0.0.0:5678->5678/tcp
 ```bash
 # Ver logs de un servicio
 docker-compose logs -f backend
-docker-compose logs -f openwa
+docker-compose logs -f celery-worker
 
 # Reiniciar un servicio
 docker-compose restart backend
@@ -505,40 +502,25 @@ Abrí `http://localhost:5050`:
 
 ---
 
-## 8. Conectar WhatsApp (OpenWA)
+## 8. Conectar WhatsApp (Meta Cloud API)
 
-OpenWA es un gateway gratuito que convierte tu WhatsApp en un bot. Se ejecuta como contenedor Docker.
+El canal es **Meta WhatsApp Cloud API**. Cada tenant conecta su número
+guardando su `phone_number_id` y `access_token` (cifrado) vía el endpoint
+`POST /clients/{client_id}/connect-whatsapp`. El alta en Meta Business, la
+suscripción del webhook y su verificación están detalladas en
+`GUIA-INTEGRACION.md`.
 
-### Paso 1: Abrir OpenWA
-
-Abrí `http://localhost:8080` en el navegador. Verás la interfaz de OpenWA.
-
-### Paso 2: Escanear el código QR
-
-1. En tu celular, abrí WhatsApp
-2. Ve a **Ajustes** → **Dispositivos vinculados** → **Vincular un dispositivo**
-3. Escaneá el QR que aparece en `http://localhost:8080`
-
-> El QR expira cada 30 segundos. Si expira, recargá la página.
-
-### Paso 3: Configurar el webhook en OpenWA
-
-El backend necesita recibir los mensajes entrantes. OpenWA debe reenviarlos al webhook.
-
-En la interfaz de OpenWA, configurá:
+Resumen del cableado:
 
 | Campo | Valor |
 |---|---|
-| Webhook URL | `http://backend:8000/webhook/whatsapp` |
-| Webhook Events | `message` (o todos) |
-| API Key Header | `mi-secreto-whatsapp-cambiar` (mismo que `EVOLUTION_API_KEY`) |
-
-> Si tu OpenWA tiene interfaz para configurar webhook, usá esos valores.  
-> Si no, podés usar la API de OpenWA para registrarlo manualmente.
+| Webhook URL (Meta) | `https://<tu-dominio>/webhook/whatsapp` |
+| Verify token | `WHATSAPP_VERIFY_TOKEN` (variable de entorno) |
+| Routing multi-tenant | por `phone_number_id` del payload de Meta |
 
 ### Verificar conexión
 
-Enviá un mensaje de WhatsApp a ese número desde otro teléfono.  
+Enviá un mensaje de WhatsApp al número de prueba de Meta desde otro teléfono.  
 Revisá los logs del backend:
 
 ```bash
@@ -692,7 +674,7 @@ Estos son los flujos que más valor generan, ordenados por impacto:
 |---|-----------|------------|:----------:|
 | 1 | **Agendar en Google Calendar** | Webhook → Google Calendar → Responder | ⭐ Fácil |
 | 2 | **Consultar Google Sheets** | Webhook → Google Sheets (leer) → Responder | ⭐ Fácil |
-| 3 | **Enviar recordatorio por WhatsApp** | n8n Schedule → HTTP Request a Evolution API | ⭐⭐ Medio |
+| 3 | **Enviar recordatorio por WhatsApp** | Celery beat → recordatorio vía Meta Cloud API (ya nativo, sin n8n) | ⭐⭐ Medio |
 | 4 | **Crear pedido en e-commerce** | Webhook → Shopify/WooCommerce API → Responder | ⭐⭐ Medio |
 | 5 | **Notificar a un humano** | Webhook → Enviar WhatsApp/email al dueño | ⭐ Fácil |
 | 6 | **Buscar en base de conocimiento** | Webhook → HTTP Request a Supabase → Responder | ⭐⭐ Medio |
@@ -745,17 +727,17 @@ Probemos el sistema de punta a punta. Vas a simular un cliente real:
 ### Lo que pasa por detrás
 
 ```
-WhatsApp ──→ OpenWA (:8080) ──→ Backend (:8000) ──→ LangGraph (agente IA)
+WhatsApp ──→ Meta Cloud API ──→ Webhook Backend (:8000) ──→ LangGraph (agente IA)
                                     │
-                                    ├── Busca cliente por número en Supabase
+                                    ├── Resuelve tenant por phone_number_id en Supabase
                                     ├── Carga personalidad y tools del agente
                                     ├── Consulta LLM (Gemini/OpenAI/Ollama)
-                                    ├── Si detecta "tool": agendar_turno
-                                    │   └──→ n8n (:5678) ──→ Google Calendar
-                                    │                         └──→ Respuesta
+                                    ├── Si detecta "tool": agendar_cita (nativa)
+                                    │   └──→ AppointmentRepository ──→ Supabase
+                                    │                         └──→ Confirmación
                                     └── Guarda mensajes en Supabase
                                         │
-                                        └──→ OpenWA ──→ WhatsApp (respuesta al cliente)
+                                        └──→ Meta Cloud API ──→ WhatsApp (respuesta al cliente)
 ```
 
 ### Verificar en el Dashboard
@@ -1071,8 +1053,8 @@ Visitante → Landing Page → Completa formulario
 
 ### Sesión 2 — WhatsApp + Motor IA
 
-- Integración con OpenWA (WhatsApp Gateway via Docker)
-- Webhook unificado `/webhook/whatsapp` para recibir mensajes
+- Integración con Meta WhatsApp Cloud API
+- Webhook `/webhook/whatsapp` para recibir mensajes
 - Arquitectura hexagonal: `LLMPort` para conectar cualquier LLM
 - LangGraph para orquestación del agente (system prompt + herramientas)
 - `build_system_prompt()` con personalidad, tools y contexto de negocio
@@ -1107,10 +1089,9 @@ Visitante → Landing Page → Completa formulario
 - Sección de feedback en la página de detalle del lead
 - Endpoint `/api/v1/feedback/stats` con promedio y distribución
 
-### Sesión 7 — Webhook Dual + Plantillas v2
+### Sesión 7 — Webhook Meta + Plantillas v2
 
-- Soporte simultáneo para Meta WhatsApp Cloud API y Evolution API en el webhook
-- Detección automática del formato del payload entrante
+- Webhook de Meta WhatsApp Cloud API con routing multi-tenant por `phone_number_id`
 - Webhook verification (`GET /webhook/whatsapp` con challenge)
 - Rate limiter con Redis para evitar spam/abuso
 - Endpoint `POST /api/v1/templates/{slug}/apply` — 1-click setup (Cliente + Agente + Tools)
@@ -1175,17 +1156,17 @@ Visitante → Landing Page → Completa formulario
 | `http://localhost:8000/api/v1/leads` | API Leads | Backend |
 | `http://localhost:8000/api/v1/feedback` | API Feedback | Backend |
 | `http://localhost:8000/api/v1/templates` | API Plantillas | Backend |
-| `http://localhost:8000/webhook/whatsapp` | Webhook WhatsApp (Meta + Evolution) | M1 |
+| `http://localhost:8000/webhook/whatsapp` | Webhook WhatsApp (Meta Cloud API) | M1 |
 | `http://localhost:5678` | n8n Automation | M2 |
 
 ### Solución de problemas comunes
 
 | Problema | Solución |
 |---|---|
-| `docker-compose up` falla | ¿Docker Desktop está corriendo? ¿Puertos 5050/8000/8080/5678 están libres? |
+| `docker-compose up` falla | ¿Docker Desktop está corriendo? ¿Puertos 5050/8000/5678 están libres? |
 | Backend no arranca | `docker-compose logs backend` — probablemente falta `.env` o credenciales incorrectas |
 | "Invalid API key" en Supabase | Verificá que sea la **service_role** key, no la anon key |
-| OpenWA no escanea QR | Recargá la página, el QR expira en 30s. Asegurate de que tu celular y la PC estén en la misma red |
+| El bot no recibe mensajes | Verificá el webhook en Meta (verify token) y que el `phone_number_id` del tenant esté configurado |
 | Agente IA no responde | Revisá `LLM_API_KEY` y `LLM_BASE_URL` en `.env`. Probá `curl http://localhost:8000/health` primero |
 | Celery no procesa tareas | `docker-compose logs celery-worker` — probablemente Redis no está healthy |
 | Leads no se cargan | Verificá la tabla `leads` en Supabase y que el `client_id` sea correcto |

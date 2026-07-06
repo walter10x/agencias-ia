@@ -2,8 +2,8 @@
 
 Cubre:
 - MetaMetadata/MetaValue exponen phone_number_id del payload.
-- process_whatsapp_message resuelve el cliente por phone_number_id
-  cuando se provee, con fallback a find_by_whatsapp si no hay match.
+- process_whatsapp_message resuelve el cliente ESTRICTAMENTE por
+  phone_number_id (Meta siempre lo envía); sin match → ignorado.
 - Dos tenants con distinto phone_number_id reciben cada uno su propio
   cliente/agente (aislamiento).
 """
@@ -102,7 +102,7 @@ class TestProcessWhatsappMessageRouting:
 
         assert result.status == "queued"
         client_repo.find_by_phone_number_id.assert_awaited_once_with("pnid-tenant-a")
-        # No debería recurrir al fallback por whatsapp si ya encontró por phone_number_id
+        # Routing estricto por phone_number_id: nunca se usa find_by_whatsapp.
         client_repo.find_by_whatsapp.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -156,53 +156,38 @@ class TestProcessWhatsappMessageRouting:
         assert call_kwargs_a["kwargs"]["client_id"] != call_kwargs_b["kwargs"]["client_id"]
 
     @pytest.mark.asyncio
-    async def test_falls_back_to_whatsapp_lookup_when_phone_number_id_not_found(
+    async def test_unknown_phone_number_id_is_ignored(
         self, client_repo: AsyncMock, agent_repo: AsyncMock
     ) -> None:
-        """Si no hay match por phone_number_id, se usa el lookup previo (Evolution/legacy)."""
+        """Sin match por phone_number_id → mensaje ignorado (no hay fallback legacy)."""
         client_repo.find_by_phone_number_id.return_value = None
-        client_legacy = _make_client(TENANT_A_ID, "573003333333")
-        client_repo.find_by_whatsapp.return_value = client_legacy
-        agent_repo.find_active_by_client.return_value = [_make_agent(TENANT_A_ID)]
 
-        with patch("app.infrastructure.whatsapp.message_processor.celery_app") as mock_celery:
-            mock_task = MagicMock()
-            mock_task.id = "task-fallback"
-            mock_celery.send_task.return_value = mock_task
+        result = await process_whatsapp_message(
+            phone="573003333333",
+            text="Hola",
+            client_repo=client_repo,
+            agent_repo=agent_repo,
+            phone_number_id="unknown-pnid",
+        )
 
-            result = await process_whatsapp_message(
-                phone="573003333333",
-                text="Hola",
-                client_repo=client_repo,
-                agent_repo=agent_repo,
-                phone_number_id="unknown-pnid",
-            )
-
-        assert result.status == "queued"
+        assert result.status == "ignored"
+        assert result.reason == "no_client"
         client_repo.find_by_phone_number_id.assert_awaited_once_with("unknown-pnid")
-        client_repo.find_by_whatsapp.assert_awaited_once()
+        client_repo.find_by_whatsapp.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_no_phone_number_id_skips_lookup_by_pnid(
+    async def test_missing_phone_number_id_is_ignored(
         self, client_repo: AsyncMock, agent_repo: AsyncMock
     ) -> None:
-        """Sin phone_number_id (Evolution API) — comportamiento previo intacto."""
-        client_legacy = _make_client(TENANT_A_ID, "573003333333")
-        client_repo.find_by_whatsapp.return_value = client_legacy
-        agent_repo.find_active_by_client.return_value = [_make_agent(TENANT_A_ID)]
+        """Sin phone_number_id no se puede resolver el tenant → ignorado."""
+        result = await process_whatsapp_message(
+            phone="573003333333",
+            text="Hola",
+            client_repo=client_repo,
+            agent_repo=agent_repo,
+        )
 
-        with patch("app.infrastructure.whatsapp.message_processor.celery_app") as mock_celery:
-            mock_task = MagicMock()
-            mock_task.id = "task-legacy"
-            mock_celery.send_task.return_value = mock_task
-
-            result = await process_whatsapp_message(
-                phone="573003333333",
-                text="Hola",
-                client_repo=client_repo,
-                agent_repo=agent_repo,
-            )
-
-        assert result.status == "queued"
+        assert result.status == "ignored"
+        assert result.reason == "missing_phone_number_id"
         client_repo.find_by_phone_number_id.assert_not_awaited()
-        client_repo.find_by_whatsapp.assert_awaited_once_with("573003333333")
+        client_repo.find_by_whatsapp.assert_not_awaited()

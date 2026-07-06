@@ -36,10 +36,6 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_model: str = "gpt-4o-mini"
 
-    # Evolution API (WhatsApp)
-    evolution_api_url: str = ""
-    evolution_api_key: str = ""
-
     # Conversaciones (memoria del agente)
     conversation_history_limit: int = 10
 

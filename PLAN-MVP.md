@@ -93,10 +93,10 @@ Total estimado: **15-22 días de trabajo** (~3-4 semanas de calendario para 1 de
 
 ## Fuera del MVP (fase 2 del producto)
 
-Sync Google Calendar, billing automatizado (cobrar manual al inicio), métricas avanzadas del dashboard, soporte Evolution API, knowledge base/RAG (la tabla existe, sin uso).
+Sync Google Calendar, billing automatizado (cobrar manual al inicio), métricas avanzadas del dashboard, knowledge base/RAG (la tabla existe, sin uso).
 
 ## Riesgos principales
 
-1. **Meta**: tiempos de verificación y política de plantillas fuera de tu control → mitigación: empezar ya, y mantener el código de Evolution como plan B sin borrarlo.
+1. **Meta**: tiempos de verificación y política de plantillas fuera de tu control → mitigación: empezar el trámite ya. (El código de Evolution API fue eliminado; el canal es exclusivamente Meta Cloud API.)
 2. **Coste por conversación de Meta** entra en el pricing del servicio → calcular antes de fijar precios.
 3. **Fiabilidad del envío**: el fallo silencioso actual es el mayor riesgo reputacional → resuelto en 3.2, no vender antes de eso.

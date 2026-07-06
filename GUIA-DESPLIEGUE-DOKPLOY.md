@@ -107,7 +107,6 @@ Para producción real (no incluido en este deploy de prueba):
 
 - **LLM**: OpenAI API key, Anthropic, o un gateway local (Ollama, oinoco proxy, etc.)
 - **WhatsApp Cloud API** (Meta): `WHATSAPP_PHONE_NUMBER_ID` + `WHATSAPP_ACCESS_TOKEN`
-- Opcional: **Evolution API** si quieres usar un gateway WhatsApp self-hosted
 
 ---
 

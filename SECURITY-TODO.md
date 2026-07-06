@@ -16,7 +16,7 @@ credenciales/datos operativos reales o potencialmente reales:
 |---|---|---|---|---|
 | 1 | Password de superadmin `SuperAdmin123!` para `walter@admin.com` | Hardcodeada como default en `backend-core/scripts/seed_superadmin.py` (ya corregido) y documentada en texto plano en `GUIA-INTEGRACION.md` (ya saneado) | **Medio** — es una credencial de acceso admin real y conocida por cualquiera con acceso al repo | **ROTAR**: si existe algún entorno (local, staging, o el que sea) donde se ejecutó `seed_superadmin.py` sin `SUPERADMIN_PASSWORD` propio, cambiar esa contraseña ya (login admin → cambiar password, o re-ejecutar el script con `SUPERADMIN_PASSWORD` nuevo). El script ya no permite crear el admin sin especificar email/password explícitos. |
 | 2 | Password del rol `authenticator` de PostgREST: `postgrest` hardcodeada en `docker/postgres/init.sql` | `init.sql`, referenciada en `docker-compose.production.yml` y `docker-compose.yml` | **Medio** — si algún deploy de Dokploy ya corrió con esa password fija | **ROTAR**: generar un valor nuevo (`openssl rand -hex 24`), definir `POSTGREST_AUTHENTICATOR_PASSWORD` en las variables de entorno del proyecto en Dokploy, y re-desplegar. Si el volumen de Postgres ya existe (no es un init limpio), hay que además correr manualmente `ALTER ROLE authenticator WITH PASSWORD '<nuevo-valor>';` en la base de datos existente, porque los scripts de `docker-entrypoint-initdb.d` **solo corren la primera vez** que se crea el volumen. |
-| 3 | `AUTHENTICATION_API_KEY=change-me-to-a-secure-key` en `evolution-api.env` | Tracked en git (ya se quitó del tracking; ver `evolution-api.env.example`) | **Bajo** — es un valor placeholder ("change-me"), no una key real, y Evolution API no está activo en el MVP (Meta Cloud API es el canal, ver README.md) | Si en el futuro se activa Evolution como plan B, generar una key real con `openssl rand -hex 32` y guardarla SOLO en `evolution-api.env` local (gitignored), nunca commitear. |
+| 3 | ~~`AUTHENTICATION_API_KEY` en `evolution-api.env`~~ | Evolution API fue **eliminado** del proyecto (canal único = Meta Cloud API). El archivo `evolution-api.env.example` y toda referencia a Evolution se borraron. | **Ninguno** — ya no aplica | Sin acción. |
 | 4 | Phone Number ID de Meta (`1202123836308611`) y URL de Cloudflare Tunnel de un entorno de trabajo real | `GUIA-INTEGRACION.md`, `GUIA-DESPLIEGUE-DOKPLOY.md` (ya sanados a placeholders) | **Bajo** — el Phone Number ID no autentica nada sin el access token (que nunca estuvo versionado en claro), y el tunnel de Cloudflare es efímero (probablemente ya expirado) | Ninguna rotación estrictamente necesaria, pero si ese túnel sigue activo, apagarlo y generar uno nuevo cuando se retome el trabajo con Meta. |
 
 ## Checklist de rotación
@@ -39,7 +39,7 @@ credenciales/datos operativos reales o potencialmente reales:
       en docs, ya saneado) sigue activo en algún proceso; si es así,
       detenerlo.
 
-## Nota sobre 0.1 (Meta) y 0.5 (Evolution)
+## Nota sobre 0.1 (Meta)
 
 Este documento no cubre credenciales de la cuenta de Meta Business/WABA
 (tarea 0.1 del plan) porque ese trámite es externo y no gestionado desde

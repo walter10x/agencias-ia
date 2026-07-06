@@ -60,7 +60,7 @@ Para completar: conseguir API key real de OpenAI, Anthropic, o instalar Ollama l
 | Plantillas (10 rubros, 40 herramientas para n8n) | ✅ |
 | n8n (contenedor corriendo) | ✅ `http://localhost:5678` (sin flujos aún) |
 | Celery + Redis para tareas asíncronas | ✅ |
-| Webhook endpoint `/webhook/whatsapp` | ✅ Soporta Meta + Evolution API |
+| Webhook endpoint `/webhook/whatsapp` | ✅ Meta Cloud API |
 | Rate limiting (10 msg/60s por número) | ✅ |
 | **Meta WhatsApp Cloud API** | ✅ Phone Number ID: `<phone-number-id-de-ejemplo>` |
 | **Cloudflare Tunnel (webhook público)** | ✅ `https://<tu-subdominio>.trycloudflare.com` |
@@ -374,7 +374,7 @@ Luego actualiza la URL en Meta Developers si cambió.
 | Archivo | Propósito |
 |---------|-----------|
 | `backend-core/.env` | Variables de entorno (Meta, LLM, n8n, Redis) |
-| `backend-core/app/infrastructure/whatsapp/webhook.py` | Recibe mensajes de Meta + Evolution API |
+| `backend-core/app/infrastructure/whatsapp/webhook.py` | Recibe mensajes de Meta Cloud API |
 | `backend-core/app/infrastructure/whatsapp/message_processor.py` | Busca cliente/agente, encola Celery |
 | `backend-core/app/infrastructure/config/tasks.py` | Celery: LLM inference, tools, enviar respuesta |
 | `backend-core/app/infrastructure/ai/tools.py` | Convierte herramientas a OpenAI format, ejecuta n8n |

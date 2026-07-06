@@ -56,13 +56,6 @@ services:
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-my-verify-token}
       WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v22.0}
 
-      # === Evolution API (Fase 0.5: plan B "dormido", ver README.md) ===
-      # El canal del MVP es Meta Cloud API (arriba). No hay servicio
-      # "evolution-api" desplegado en este compose — estas variables
-      # quedan vacías y sin efecto salvo que se reactive Evolution.
-      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
-      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
-
       # === n8n ===
       N8N_URL: ${N8N_URL:-http://n8n:5678}
       N8N_API_KEY: ${N8N_API_KEY:-}
@@ -222,10 +215,6 @@ services:
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-my-verify-token}
-      # Evolution API: plan B "dormido" (Fase 0.5, ver README.md). Sin
-      # servicio activo en este compose; variables vacías por defecto.
-      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
-      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
       N8N_URL: ${N8N_URL:-http://n8n:5678}
       N8N_API_KEY: ${N8N_API_KEY:-}
       REDIS_URL: redis://redis:6379/0

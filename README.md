@@ -40,33 +40,9 @@ A partir de la Fase 3 del plan, además se persisten cifradas por tenant en
 base de datos (`connect_whatsapp`), en vez de depender de una única
 credencial global.
 
-### Evolution API — plan B "dormido"
-
-El proyecto contempló originalmente [Evolution API](https://doc.evolution-api.com)
-(gateway self-hosted de WhatsApp, vía Baileys) como alternativa a Meta. Esa
-vía queda **fuera del MVP** pero **no se elimina**:
-
-- El webhook (`backend-core/app/infrastructure/whatsapp/webhook.py`) sigue
-  detectando y procesando el formato de payload de Evolution
-  (`EvolutionWebhookPayload`) además del de Meta — no se ha borrado ese
-  código, solo no se usa activamente.
-- No hay ningún servicio `evolution-api` activo en `docker-compose.yml` ni
-  en `docker-compose.production.yml` — no se está desplegando ni
-  consumiendo recursos.
-- `evolution-api.env.example` documenta la configuración que tendría el
-  contenedor de Evolution si se llegara a activar como fallback (por
-  ejemplo, ante un rechazo o suspensión de la cuenta de Meta). El archivo
-  real con valores (`evolution-api.env`) está en `.gitignore` y nunca debe
-  versionarse.
-- Las variables `EVOLUTION_API_URL` / `EVOLUTION_API_KEY` siguen
-  declaradas (vacías por defecto) en los servicios `backend` y
-  `celery-worker` de ambos `docker-compose*.yml`, sin coste ni efecto si
-  no se usan.
-
-Si en el futuro se decide reactivar Evolution: descomentar/añadir su
-servicio en el `docker-compose` correspondiente, copiar
-`evolution-api.env.example` a `evolution-api.env` con valores reales, y
-configurar `EVOLUTION_API_URL`/`EVOLUTION_API_KEY`.
+El canal de WhatsApp del producto es **exclusivamente Meta Cloud API**. El
+webhook (`backend-core/app/infrastructure/whatsapp/webhook.py`) sólo procesa
+payloads de Meta y hace routing multi-tenant por `phone_number_id`.
 
 ## Seguridad
 
