@@ -21,9 +21,12 @@ export interface MessageData {
   conversation_id: string;
   role: string;
   content: string;
+  status: MessageStatus;
   tokens_used: number;
   created_at: string;
 }
+
+export type MessageStatus = "received" | "sent" | "failed" | "skipped";
 
 export interface ConversationMessagesData {
   phone_number: string;

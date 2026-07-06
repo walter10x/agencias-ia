@@ -24,6 +24,20 @@ def _make_mock_chain() -> MagicMock:
     return chain
 
 
+class _FakeCipher:
+    """Fake de CredentialsCipherPort — reversible y determinista para tests."""
+
+    def encrypt(self, plaintext: str) -> str:
+        if not plaintext:
+            return ""
+        return f"enc:{plaintext}"
+
+    def decrypt(self, ciphertext: str) -> str:
+        if not ciphertext:
+            return ""
+        return ciphertext.removeprefix("enc:")
+
+
 def _make_row(
     id_: str,
     name: str = "Test",
@@ -50,6 +64,7 @@ def mock_db() -> MagicMock:
     chain = _make_mock_chain()
     table.select.return_value = chain
     table.upsert.return_value = chain
+    table.update.return_value = chain
     db.table.return_value = table
     db._chain = chain  # expose chain for test assertions
     db._table = table
@@ -58,7 +73,7 @@ def mock_db() -> MagicMock:
 
 @pytest.fixture
 def repo(mock_db: MagicMock) -> SupabaseClientRepository:
-    return SupabaseClientRepository(mock_db)
+    return SupabaseClientRepository(mock_db, cipher=_FakeCipher())
 
 
 @pytest.fixture
@@ -187,3 +202,164 @@ async def test_save_uniqueness_error_maps_to_invalid_client(repo: SupabaseClient
 
     with pytest.raises(InvalidClientError, match="WhatsApp"):
         await repo.save(client)
+
+
+# ======================================================================
+# find_by_phone_number_id() — Fase 3, routing multi-tenant del webhook
+# ======================================================================
+
+
+@pytest.mark.asyncio
+async def test_find_by_phone_number_id_found(repo: SupabaseClientRepository, mock_db: MagicMock, client: Client) -> None:
+    row = _make_row(str(client.id))
+    row["phone_number_id"] = "123456789"
+    mock_db._chain.data = [row]
+
+    found = await repo.find_by_phone_number_id("123456789")
+
+    assert found is not None
+    assert found.id == client.id
+
+
+@pytest.mark.asyncio
+async def test_find_by_phone_number_id_not_found(repo: SupabaseClientRepository, mock_db: MagicMock) -> None:
+    mock_db._chain.data = []
+    found = await repo.find_by_phone_number_id("does-not-exist")
+    assert found is None
+
+
+@pytest.mark.asyncio
+async def test_find_by_phone_number_id_empty_string_returns_none_without_query(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    found = await repo.find_by_phone_number_id("")
+    assert found is None
+    mock_db.table.assert_not_called()
+
+
+# ======================================================================
+# get_whatsapp_credentials() — Fase 3, tarea 3.1
+# ======================================================================
+
+
+@pytest.mark.asyncio
+async def test_get_whatsapp_credentials_returns_decrypted_token(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    mock_db._chain.data = [
+        {
+            "phone_number_id": "999888777",
+            "whatsapp_access_token_encrypted": "enc:real-token-value",
+        }
+    ]
+
+    creds = await repo.get_whatsapp_credentials("some-client-id")
+
+    assert creds.has_credentials is True
+    assert creds.phone_number_id == "999888777"
+    assert creds.access_token == "real-token-value"
+
+
+@pytest.mark.asyncio
+async def test_get_whatsapp_credentials_missing_client_returns_empty(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    mock_db._chain.data = []
+
+    creds = await repo.get_whatsapp_credentials("unknown-client-id")
+
+    assert creds.has_credentials is False
+    assert creds.phone_number_id == ""
+    assert creds.access_token == ""
+
+
+@pytest.mark.asyncio
+async def test_get_whatsapp_credentials_empty_token_column_returns_no_credentials(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    mock_db._chain.data = [
+        {"phone_number_id": "999888777", "whatsapp_access_token_encrypted": ""}
+    ]
+
+    creds = await repo.get_whatsapp_credentials("some-client-id")
+
+    assert creds.has_credentials is False
+    assert creds.phone_number_id == "999888777"
+    assert creds.access_token == ""
+
+
+# ======================================================================
+# save_whatsapp_credentials() — Fase 3, tarea 3.1
+# ======================================================================
+
+
+@pytest.mark.asyncio
+async def test_save_whatsapp_credentials_encrypts_before_persisting(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    await repo.save_whatsapp_credentials(
+        client_id="some-client-id",
+        phone_number_id="111222333",
+        access_token="plain-secret-token",
+    )
+
+    mock_db._table.update.assert_called_once()
+    payload = mock_db._table.update.call_args[0][0]
+    assert payload["phone_number_id"] == "111222333"
+    assert payload["whatsapp_access_token_encrypted"] == "enc:plain-secret-token"
+
+
+# ======================================================================
+# get_business_schedule() — reminder_offset_minutes (Fase 4)
+# ======================================================================
+
+
+@pytest.mark.asyncio
+async def test_get_business_schedule_reads_reminder_offset_from_jsonb(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    """La clave "reminder_offset_minutes" vive dentro del JSONB business_hours,
+    no como columna propia — se lee sin migración de datos adicional."""
+    mock_db._chain.data = [
+        {
+            "id": "client-1",
+            "business_hours": {"timezone": "UTC", "weekly": {}, "reminder_offset_minutes": 120},
+            "appointment_duration_minutes": 30,
+        }
+    ]
+
+    schedule = await repo.get_business_schedule("client-1")
+
+    assert schedule is not None
+    assert schedule.reminder_offset_minutes == 120
+
+
+@pytest.mark.asyncio
+async def test_get_business_schedule_defaults_reminder_offset_when_key_missing(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    """Tenants creados antes de la Fase 4 no tienen la clave en su JSONB:
+    debe aplicarse el default (1440 min = 24h) en código, sin backfill."""
+    mock_db._chain.data = [
+        {
+            "id": "client-2",
+            "business_hours": {"timezone": "UTC", "weekly": {}},
+            "appointment_duration_minutes": 30,
+        }
+    ]
+
+    schedule = await repo.get_business_schedule("client-2")
+
+    assert schedule is not None
+    assert schedule.reminder_offset_minutes == 1440
+
+
+@pytest.mark.asyncio
+async def test_get_business_schedule_returns_none_for_missing_client(
+    repo: SupabaseClientRepository, mock_db: MagicMock
+) -> None:
+    mock_db._chain.data = []
+
+    schedule = await repo.get_business_schedule("does-not-exist")
+
+    assert schedule is None

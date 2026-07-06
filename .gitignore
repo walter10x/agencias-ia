@@ -56,5 +56,5 @@ coverage.xml
 # n8n
 n8n-data/
 
-# Evolution API
-evolution-data/
+# Stitch (genera HTML desde diseno - artefacto)
+frontend-dashboard/stitch-output/

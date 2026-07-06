@@ -13,7 +13,13 @@ redis==5.2.1
 celery==5.4.0
 python-dotenv==1.0.1
 passlib[bcrypt]>=1.7.4
+bcrypt==4.2.1
 python-jose[cryptography]>=3.3.0
+# Cifrado simétrico real (Fernet) de credenciales de WhatsApp por tenant.
+# Si no se puede instalar (p. ej. sandbox sin red a PyPI), el adaptador
+# FernetCredentialsCipher degrada a un fallback base64 SOLO-DEV — ver
+# app/infrastructure/security/credentials_cipher.py.
+cryptography>=42.0.0
 pytest==8.3.4
 pytest-asyncio==0.24.0
 pytest-mock==3.14.0

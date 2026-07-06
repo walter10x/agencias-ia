@@ -146,13 +146,15 @@ class SupabaseAgentRepository(AgentRepository):
 
         message = str(exc)
 
-        # Try to parse Supabase PostgREST error from message body
-        pg_code = ""
+        # El código PostgreSQL puede venir como atributo de la excepción
+        # (drivers/SDKs que lo exponen) o embebido en el body PostgREST
+        # ("Supabase error: {json}"). Se prueban ambas fuentes.
+        pg_code = str(getattr(exc, "code", "") or "")
         try:
             if "Supabase error:" in message:
                 body_str = message.split("Supabase error:", 1)[1].strip()
                 body = json.loads(body_str)
-                pg_code = body.get("code", "")
+                pg_code = body.get("code", "") or pg_code
                 message = body.get("message", message)
         except (json.JSONDecodeError, IndexError):
             pass

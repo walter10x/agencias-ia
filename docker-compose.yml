@@ -6,7 +6,7 @@ services:
     build: ./frontend-dashboard
     container_name: agencia-frontend
     ports:
-      - "5050:80"
+      - "5051:80"
     depends_on:
       - backend
     restart: unless-stopped
@@ -21,13 +21,84 @@ services:
     container_name: agencia-backend
     ports:
       - "8000:8000"
+    # NOTA (Fase 3): añade CREDENTIALS_ENCRYPTION_KEY=<placeholder> a
+    # backend-core/.env para cifrado real de tokens de WhatsApp por tenant.
+    # Generar con: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # NUNCA versionar un valor real — .env está gitignored.
     env_file:
       - ./backend-core/.env
     depends_on:
       redis:
         condition: service_healthy
+      postgrest-proxy:
+        condition: service_started
     volumes:
       - ./backend-core/app:/app/app
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # PostgreSQL 16 - Base de datos local (reemplaza Supabase)
+  # ============================================================
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agencia-postgres
+    environment:
+      POSTGRES_DB: agencias_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # Password del rol "authenticator" de PostgREST (solo dev local).
+      # Override vía export POSTGREST_AUTHENTICATOR_PASSWORD=... si quieres
+      # un valor distinto. En producción es obligatoria (ver
+      # docker-compose.production.yml) y NUNCA debe ser este default.
+      POSTGREST_AUTHENTICATOR_PASSWORD: ${POSTGREST_AUTHENTICATOR_PASSWORD:-postgrest-dev-local-only}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/00-create-roles.sh:/docker-entrypoint-initdb.d/00-create-roles.sh
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # PostgREST - API REST (misma API que Supabase)
+  # ============================================================
+  postgrest:
+    image: postgrest/postgrest:latest
+    container_name: agencia-postgrest
+    environment:
+      # Debe coincidir con POSTGREST_AUTHENTICATOR_PASSWORD del servicio
+      # "postgres" (ver docker/postgres/00-create-roles.sh).
+      PGRST_DB_URI: postgres://authenticator:${POSTGREST_AUTHENTICATOR_PASSWORD:-postgrest-dev-local-only}@postgres:5432/agencias_db
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: web_anon
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # ============================================================
+  # PostgREST Proxy (nginx) - Reescribe /rest/v1/* para PostgREST
+  # ============================================================
+  postgrest-proxy:
+    image: nginx:alpine
+    container_name: agencia-postgrest-proxy
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - postgrest
     restart: unless-stopped
     networks:
       - agencia-net
@@ -49,8 +120,6 @@ services:
     networks:
       - agencia-net
 
-  # ============================================================
-  # Evolution API - WhatsApp Gateway (Self-hosted)
   # ============================================================
   # n8n - Automatización de flujos secundarios
   # ============================================================
@@ -78,6 +147,26 @@ services:
     build: ./backend-core
     container_name: agencia-celery
     command: celery -A app.infrastructure.config.celery_app worker --loglevel=info
+    # Comparte backend-core/.env — ver nota de CREDENTIALS_ENCRYPTION_KEY
+    # en el servicio "backend" (misma clave, mismo proceso de cifrado).
+    env_file:
+      - ./backend-core/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend-core/app:/app/app
+    restart: unless-stopped
+    networks:
+      - agencia-net
+
+  # Scheduler de tareas periódicas (Fase 4): dispara send_appointment_reminders
+  # según el beat_schedule de celery_app.py. DEBE correr como proceso único
+  # (un solo beat) además del worker; sin él, los recordatorios no se envían.
+  celery-beat:
+    build: ./backend-core
+    container_name: agencia-celery-beat
+    command: celery -A app.infrastructure.config.celery_app beat --loglevel=info
     env_file:
       - ./backend-core/.env
     depends_on:
@@ -91,6 +180,7 @@ services:
 
 volumes:
   n8n-data:
+  postgres-data:
 
 networks:
   agencia-net:

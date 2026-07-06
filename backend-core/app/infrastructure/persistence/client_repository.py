@@ -10,13 +10,39 @@ from uuid import UUID
 import httpx
 from app.infrastructure.http.supabase_client import SupabaseHttpClient
 
+from app.domain.appointment.entity import (
+    DEFAULT_APPOINTMENT_DURATION_MINUTES,
+    DEFAULT_REMINDER_OFFSET_MINUTES,
+    BusinessSchedule,
+)
+from app.domain.appointment.repository import BusinessScheduleRepository
 from app.domain.client.entity import Client
 from app.domain.client.repository import ClientRepository
 from app.domain.shared.errors import DomainError, InvalidClientError
 from app.domain.shared.value_objects import BusinessType, ClientId, Email, PasswordHash, WhatsAppNumber
 
+from dataclasses import dataclass
 
-class SupabaseClientRepository(ClientRepository):
+
+@dataclass(frozen=True, slots=True)
+class WhatsAppCredentials:
+    """Credenciales de Meta Cloud API de un tenant, ya descifradas.
+
+    `has_credentials` es False cuando el cliente no tiene phone_number_id
+    o access_token propios (columna vacía) — en ese caso el llamador
+    (WhatsAppSender / tasks.py) decide si aplica el fallback a las
+    credenciales globales de env.
+    """
+
+    phone_number_id: str
+    access_token: str
+
+    @property
+    def has_credentials(self) -> bool:
+        return bool(self.phone_number_id) and bool(self.access_token)
+
+
+class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
     """Supabase implementation of ClientRepository.
 
     Uses supabase-py sync client wrapped in asyncio.to_thread.
@@ -24,8 +50,24 @@ class SupabaseClientRepository(ClientRepository):
 
     TABLE = "clients"
 
-    def __init__(self, client: SupabaseHttpClient) -> None:
+    def __init__(self, client: SupabaseHttpClient, cipher=None) -> None:
         self._db = client
+        # Cipher opcional: solo se necesita para leer/escribir el access
+        # token cifrado (get_whatsapp_credentials / save con token). Se
+        # inyecta perezosamente si no se provee, para no romper los
+        # call-sites existentes que no lo necesitan.
+        self._cipher = cipher
+
+    def _get_cipher(self):
+        if self._cipher is None:
+            from app.infrastructure.config.settings import get_settings
+            from app.infrastructure.security.credentials_cipher import (
+                FernetCredentialsCipher,
+            )
+
+            settings = get_settings()
+            self._cipher = FernetCredentialsCipher(settings.credentials_encryption_key)
+        return self._cipher
 
     # ------------------------------------------------------------------
     # Port methods
@@ -79,6 +121,102 @@ class SupabaseClientRepository(ClientRepository):
             return None
         return self._row_to_client(result.data[0])
 
+    async def find_by_phone_number_id(self, phone_number_id: str) -> Optional[Client]:
+        """Find a client by su Meta Cloud API phone_number_id.
+
+        Usado para el routing multi-tenant del webhook entrante: Meta
+        envía `metadata.phone_number_id` en cada payload, y ese valor
+        identifica de forma única el número (y por tanto el tenant)
+        que recibió el mensaje.
+        """
+        if not phone_number_id or not phone_number_id.strip():
+            return None
+
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .eq("phone_number_id", phone_number_id.strip())
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_client(result.data[0])
+
+    async def get_whatsapp_credentials(self, client_id: str) -> "WhatsAppCredentials":
+        """Lee y descifra las credenciales de WhatsApp Cloud API del tenant.
+
+        Retorna WhatsAppCredentials con campos vacíos (has_credentials=False)
+        si el cliente no existe o no tiene credenciales propias configuradas;
+        NUNCA lanza por ausencia de credenciales (el llamador decide el
+        fallback a credenciales globales de env).
+        """
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("phone_number_id,whatsapp_access_token_encrypted")
+                .eq("id", client_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return WhatsAppCredentials(phone_number_id="", access_token="")
+
+        if not result.data:
+            return WhatsAppCredentials(phone_number_id="", access_token="")
+
+        row = result.data[0]
+        phone_number_id = str(row.get("phone_number_id") or "")
+        encrypted_token = str(row.get("whatsapp_access_token_encrypted") or "")
+        if not phone_number_id or not encrypted_token:
+            return WhatsAppCredentials(phone_number_id=phone_number_id, access_token="")
+
+        try:
+            access_token = self._get_cipher().decrypt(encrypted_token)
+        except ValueError as exc:
+            # Token corrupto o cifrado con una clave distinta a la actual:
+            # se trata como "sin credenciales" en vez de tumbar el envío.
+            import logging
+
+            logging.getLogger(__name__).error(
+                "No se pudo descifrar whatsapp_access_token_encrypted para "
+                f"client_id={client_id}: {exc}"
+            )
+            return WhatsAppCredentials(phone_number_id=phone_number_id, access_token="")
+
+        return WhatsAppCredentials(
+            phone_number_id=phone_number_id, access_token=access_token
+        )
+
+    async def save_whatsapp_credentials(
+        self, client_id: str, phone_number_id: str, access_token: str
+    ) -> None:
+        """Cifra el access token y persiste phone_number_id + token cifrado.
+
+        No hace ninguna llamada de red a Meta para validar las credenciales
+        (decisión explícita: el sandbox/CI no tiene salida a Meta).
+        """
+        encrypted_token = self._get_cipher().encrypt(access_token) if access_token else ""
+        try:
+            await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .update(
+                    {
+                        "phone_number_id": phone_number_id,
+                        "whatsapp_access_token_encrypted": encrypted_token,
+                        "whatsapp_connected": bool(phone_number_id and access_token),
+                    }
+                )
+                .eq("id", client_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+
     async def find_by_email(self, email: Email) -> Optional[Client]:
         """Find a client by email. Returns None if not found."""
         try:
@@ -118,6 +256,66 @@ class SupabaseClientRepository(ClientRepository):
             return []
 
         return [self._row_to_client(row) for row in result.data]
+
+    # ------------------------------------------------------------------
+    # BusinessScheduleRepository port (módulo de agenda — solo lectura)
+    # ------------------------------------------------------------------
+
+    async def get_business_schedule(self, client_id: str) -> Optional[BusinessSchedule]:
+        """Lee el horario del negocio desde las columnas de config del tenant.
+
+        Retorna None si el cliente no existe. Si las columnas vienen
+        vacías o con formato inesperado, retorna el horario por defecto
+        para no romper la agenda.
+        """
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("id,business_hours,appointment_duration_minutes")
+                .eq("id", client_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return None
+
+        if not result.data:
+            return None
+        return self._row_to_schedule(result.data[0])
+
+    @staticmethod
+    def _row_to_schedule(row: dict) -> BusinessSchedule:
+        raw = row.get("business_hours") or {}
+        if not isinstance(raw, dict):
+            raw = {}
+        weekly_raw = raw.get("weekly") or {}
+        weekly: dict[str, list[tuple[str, str]]] = {}
+        for day, ranges in weekly_raw.items():
+            parsed_ranges: list[tuple[str, str]] = []
+            for item in ranges or []:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    parsed_ranges.append((str(item[0]), str(item[1])))
+            weekly[str(day).lower()] = parsed_ranges
+
+        kwargs: dict = {
+            "appointment_duration_minutes": int(
+                row.get("appointment_duration_minutes")
+                or DEFAULT_APPOINTMENT_DURATION_MINUTES
+            ),
+            "timezone": str(raw.get("timezone") or "UTC"),
+            # Fase 4: "reminder_offset_minutes" vive dentro del mismo JSONB
+            # business_hours (no es columna propia). Si el cliente fue
+            # creado antes de la Fase 4 y la clave no existe en su JSONB,
+            # se aplica el default en código (1440 min = 24h) sin requerir
+            # backfill de datos.
+            "reminder_offset_minutes": int(
+                raw.get("reminder_offset_minutes")
+                or DEFAULT_REMINDER_OFFSET_MINUTES
+            ),
+        }
+        if weekly:
+            kwargs["weekly_hours"] = weekly
+        return BusinessSchedule(**kwargs)
 
     # ------------------------------------------------------------------
     # Private mappers
@@ -195,13 +393,15 @@ class SupabaseClientRepository(ClientRepository):
 
         message = str(exc)
 
-        # Try to parse Supabase PostgREST error from message body
-        pg_code = ""
+        # El código PostgreSQL puede venir como atributo de la excepción
+        # (drivers/SDKs que lo exponen) o embebido en el body PostgREST
+        # ("Supabase error: {json}"). Se prueban ambas fuentes.
+        pg_code = str(getattr(exc, "code", "") or "")
         try:
             if "Supabase error:" in message:
                 body_str = message.split("Supabase error:", 1)[1].strip()
                 body = json.loads(body_str)
-                pg_code = body.get("code", "")
+                pg_code = body.get("code", "") or pg_code
                 message = body.get("message", message)
         except (json.JSONDecodeError, IndexError):
             pass

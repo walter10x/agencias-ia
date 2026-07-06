@@ -14,8 +14,6 @@ class SupabaseHttpClient:
         self.url = url.rstrip("/")
         self.key = key
         self._headers = {
-            "apikey": key,
-            "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
         }
 
@@ -31,6 +29,10 @@ class _TableQuery:
         self._table = table
         self._method = "GET"
         self._params: dict = {}
+        # Filtros de columna acumulados como pares (columna, operador.valor).
+        # Lista (no dict) para permitir dos filtros sobre la misma columna,
+        # ej. starts_at=gte.X & starts_at=lte.Y
+        self._filter_params: list[tuple[str, str]] = []
         self._body: dict | list | None = None
         self._headers: dict = {}
         self._url_path: str = table
@@ -66,11 +68,41 @@ class _TableQuery:
         return self
 
     def eq(self, column: str, value: str | bool | int) -> _TableQuery:
-        self._params[column] = f"eq.{value}"
+        self._filter_params.append((column, f"eq.{value}"))
         return self
 
     def neq(self, column: str, value: str) -> _TableQuery:
-        self._params[column] = f"neq.{value}"
+        self._filter_params.append((column, f"neq.{value}"))
+        return self
+
+    def gt(self, column: str, value: str | int) -> _TableQuery:
+        self._filter_params.append((column, f"gt.{value}"))
+        return self
+
+    def gte(self, column: str, value: str | int) -> _TableQuery:
+        self._filter_params.append((column, f"gte.{value}"))
+        return self
+
+    def lt(self, column: str, value: str | int) -> _TableQuery:
+        self._filter_params.append((column, f"lt.{value}"))
+        return self
+
+    def lte(self, column: str, value: str | int) -> _TableQuery:
+        self._filter_params.append((column, f"lte.{value}"))
+        return self
+
+    def in_(self, column: str, values: list[str]) -> _TableQuery:
+        joined = ",".join(str(v) for v in values)
+        self._filter_params.append((column, f"in.({joined})"))
+        return self
+
+    def is_(self, column: str, value: str) -> _TableQuery:
+        """Filtro PostgREST `is` — para comparar contra NULL/true/false.
+
+        PostgREST exige el operador `is` (no `eq`) para NULL: `eq.null`
+        no es válido. Uso: `.is_("reminder_sent_at", "null")`.
+        """
+        self._filter_params.append((column, f"is.{value}"))
         return self
 
     def order(self, column: str, *, desc: bool = False, nullsfirst: bool = False) -> _TableQuery:
@@ -98,6 +130,8 @@ class _TableQuery:
         url = f"{self._client.url}/rest/v1/{self._url_path}"
         qs_parts = []
         for k, v in self._params.items():
+            qs_parts.append(f"{k}={urllib.parse.quote(str(v))}")
+        for k, v in self._filter_params:
             qs_parts.append(f"{k}={urllib.parse.quote(str(v))}")
         if qs_parts:
             url += "?" + "&".join(qs_parts)

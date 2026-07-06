@@ -1,8 +1,32 @@
 import { useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Phone, Send } from "lucide-react";
+import { ArrowLeft, Phone, Send, Check, AlertTriangle, MinusCircle } from "lucide-react";
 import { fetchConversationMessages, type MessageData } from "@/api/conversation";
+
+/** Indicador discreto del estado de entrega de un mensaje saliente. */
+function DeliveryStatus({ status }: { status: MessageData["status"] }) {
+  if (status === "failed") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-red-400" title="No se pudo entregar">
+        <AlertTriangle size={10} /> Fallido
+      </span>
+    );
+  }
+  if (status === "skipped") {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-zinc-500" title="WhatsApp no configurado: no se envió">
+        <MinusCircle size={10} /> Omitido
+      </span>
+    );
+  }
+  // "sent" (o cualquier otro) => entregado
+  return (
+    <span className="inline-flex items-center gap-0.5 text-amber-500/60" title="Enviado">
+      <Check size={10} /> Enviado
+    </span>
+  );
+}
 
 function ChatBubble({ message }: { message: MessageData }) {
   const isAssistant = message.role === "assistant";
@@ -34,8 +58,14 @@ function ChatBubble({ message }: { message: MessageData }) {
         }`}
       >
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-        <p className={`text-[10px] mt-1 ${isAssistant ? "text-amber-500/50" : "text-zinc-500"}`}>
+        <p className={`text-[10px] mt-1 flex items-center gap-1.5 ${isAssistant ? "text-amber-500/50 justify-end" : "text-zinc-500"}`}>
           {time}
+          {isAssistant && (
+            <>
+              <span className="text-amber-500/30">·</span>
+              <DeliveryStatus status={message.status} />
+            </>
+          )}
         </p>
       </div>
     </div>

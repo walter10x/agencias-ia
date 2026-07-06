@@ -343,7 +343,9 @@ class TestProcessToolsNode:
         ) as mock_execute:
             result = await process_tools_node(state)
 
-        mock_execute.assert_awaited_once_with("agendar_cita", "mañana 10am")
+        mock_execute.assert_awaited_once_with(
+            "agendar_cita", {"input": "mañana 10am"}, {"id": "client-1"}
+        )
         assert len(result["tool_results"]) == 1
         assert result["tool_results"][0]["tool_call_id"] == "call_abc"
         assert result["tool_results"][0]["tool_name"] == "agendar_cita"
@@ -440,7 +442,9 @@ class TestProcessToolsNode:
         ) as mock_execute:
             await process_tools_node(state)
 
-        mock_execute.assert_awaited_once_with("test_tool", "direct string input")
+        mock_execute.assert_awaited_once_with(
+            "test_tool", "direct string input", {"id": "client-1"}
+        )
 
 
 # ============================================================================

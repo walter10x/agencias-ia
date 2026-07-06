@@ -57,6 +57,15 @@ def get_lead_repo(
     return SupabaseLeadRepository(client)
 
 
+def get_appointment_repo(
+    client: SupabaseHttpClient = Depends(_get_supabase_client),
+) -> "SupabaseAppointmentRepository":
+    from app.infrastructure.persistence.appointment_repository import (
+        SupabaseAppointmentRepository,
+    )
+    return SupabaseAppointmentRepository(client)
+
+
 def get_template_service() -> "TemplateService":
     """FastAPI dependency: yields a TemplateService singleton."""
     from app.infrastructure.templates.data import TemplateService
@@ -143,3 +152,8 @@ async def require_superadmin(
             detail="Superadmin access required",
         )
     return current
+
+
+def superadmin_or_own_client(current: CurrentClientOutput) -> str | None:
+    """Superadmin ve todo (None), client_admin solo ve su propio client_id."""
+    return None if current.role == "superadmin" else current.client_id

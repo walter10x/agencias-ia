@@ -28,13 +28,23 @@ class Message:
     - role debe ser 'user', 'assistant', o 'system'
     - content no puede estar vacío
     - conversation_id debe ser válido
+    - status debe ser 'received', 'sent', 'failed', o 'skipped'
+
+    Semántica de status:
+    - received: mensaje entrante del usuario final.
+    - sent: respuesta del agente confirmada por Meta Cloud API.
+    - failed: el envío a Meta falló.
+    - skipped: Meta no está configurado; el mensaje NO se envió (solo logs).
     """
+
+    VALID_STATUSES = frozenset({"received", "sent", "failed", "skipped"})
 
     id: UUID = field(default_factory=uuid4)
     conversation_id: UUID = field(default_factory=uuid4)
     role: str = ""
     content: str = ""
     tokens_used: int = 0
+    status: str = "received"
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self) -> None:
@@ -43,6 +53,10 @@ class Message:
             raise ValueError(f"Invalid role: {self.role}. Must be one of {valid_roles}")
         if not self.content.strip():
             raise ValueError("Message content cannot be empty")
+        if self.status not in self.VALID_STATUSES:
+            raise ValueError(
+                f"Invalid status: {self.status}. Valid: {sorted(self.VALID_STATUSES)}"
+            )
 
 
 @dataclass

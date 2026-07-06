@@ -249,3 +249,25 @@ class TestMessageCreation:
     def test_raises_on_none_content(self) -> None:
         with pytest.raises(ValueError, match="cannot be empty"):
             Message(role="user", content="")  # type: ignore[arg-type]
+
+
+# ============================================================================
+# Message entity — delivery status (Fase 1 persistencia)
+# ============================================================================
+
+
+class TestMessageStatus:
+    """Estados de entrega: received (entrante), sent/failed/skipped (saliente)."""
+
+    def test_defaults_to_received(self) -> None:
+        msg = Message(role="user", content="Hola")
+        assert msg.status == "received"
+
+    def test_accepts_all_valid_statuses(self) -> None:
+        for status in ("received", "sent", "failed", "skipped"):
+            msg = Message(role="assistant", content="Respuesta", status=status)
+            assert msg.status == status
+
+    def test_raises_on_invalid_status(self) -> None:
+        with pytest.raises(ValueError, match="Invalid status"):
+            Message(role="assistant", content="Respuesta", status="delivered")

@@ -80,7 +80,7 @@ export default function TemplatesPage() {
 
               {/* Apply button */}
               <button
-                onClick={() => navigate(`/templates/${t.slug}/apply`)}
+                onClick={() => navigate(`/app/templates/${t.slug}/apply`)}
                 className="w-full py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors flex items-center justify-center gap-2"
               >
                 <LayoutTemplate size={16} />

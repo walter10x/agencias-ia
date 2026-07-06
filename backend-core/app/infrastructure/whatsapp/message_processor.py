@@ -1,36 +1,14 @@
-"""Orchestration logic for incoming WhatsApp messages."""
+"""Orchestration logic for incoming WhatsApp messages (Meta Cloud API)."""
 
 from __future__ import annotations
 
-import re
-
 from app.domain.agent.repository import AgentRepository
 from app.domain.client.repository import ClientRepository
-from app.domain.shared.errors import InvalidMessageError
-from app.domain.shared.value_objects import ClientId, WhatsAppNumber
+from app.domain.shared.value_objects import WhatsAppNumber
 from app.infrastructure.config.celery_app import celery_app
-from app.infrastructure.whatsapp.schemas import EvolutionWebhookPayload, WebhookResponse
+from app.infrastructure.whatsapp.schemas import WebhookResponse
 
 MAX_MESSAGE_LENGTH = 4096
-
-
-def extract_phone_number(remote_jid: str) -> str:
-    """Extract clean phone number from Evolution JID.
-
-    Examples:
-        "573001234567@s.whatsapp.net" → "573001234567"
-        "123456789-573001234567@g.us" → "573001234567"
-        "+57 300 123-4567@s.whatsapp.net" → "573001234567"
-    """
-    prefix = remote_jid.split("@")[0]
-    if "-" in prefix:
-        parts = prefix.split("-")
-        if len(parts) >= 2 and len(parts[-1]) >= 10:
-            prefix = parts[-1]
-    phone = re.sub(r"\D", "", prefix)
-    if len(phone) < 10:
-        raise InvalidMessageError(f"Invalid phone number extracted: {phone} from JID {remote_jid}")
-    return phone
 
 
 def sanitize_message(content: str) -> str:
@@ -46,66 +24,37 @@ def sanitize_message(content: str) -> str:
     return content
 
 
-async def process_evolution_message(
-    payload: EvolutionWebhookPayload,
-    client_repo: ClientRepository,
-    agent_repo: AgentRepository,
-) -> WebhookResponse:
-    """Process an Evolution-format WhatsApp message.
-
-    1. Validate event type (only messages.upsert is processed)
-    2. Validate message has content
-    3. Extract phone number from JID
-    4. Look up Client by WhatsApp number
-    5. Check client is active
-    6. Find active Agents for the client
-    7. Sanitize content
-    8. Enqueue Celery task
-    """
-    if payload.event != "messages.upsert":
-        return WebhookResponse(status="ignored", reason="unsupported_event")
-
-    data = payload.data
-    if data.message is None or data.message.message_type == "unknown":
-        return WebhookResponse(status="ignored", reason="unsupported_message_type")
-
-    content = data.message.content
-    if content is None or not content.strip():
-        return WebhookResponse(status="ignored", reason="empty_message")
-
-    phone = extract_phone_number(data.key.remote_jid)
-    push_name = data.push_name or ""
-
-    return await process_whatsapp_message(
-        phone=phone,
-        text=content,
-        push_name=push_name,
-        client_repo=client_repo,
-        agent_repo=agent_repo,
-    )
-
-
-# Backward compatibility alias
-process = process_evolution_message
-
-
 async def process_whatsapp_message(
     phone: str,
     text: str,
     push_name: str = "",
     client_repo: ClientRepository = None,
     agent_repo: AgentRepository = None,
+    phone_number_id: str = "",
 ) -> WebhookResponse:
-    """Process WhatsApp message from any source (Meta, Evolution, etc)."""
+    """Resuelve el tenant por `phone_number_id` (Meta) y encola el mensaje.
+
+    Args:
+        phone: número del cliente final que envía el mensaje.
+        text: contenido del mensaje.
+        push_name: nombre visible del contacto en WhatsApp.
+        phone_number_id: identificador del número receptor de Meta. Es la
+            clave de routing multi-tenant (Fase 3.3): cada tenant lo
+            configura al conectar su WhatsApp. Meta lo incluye en cada
+            `value.metadata`, por lo que siempre viene en mensajes reales.
+    """
     if not text or not text.strip():
         return WebhookResponse(status="ignored", reason="empty_message")
 
     try:
-        wa = WhatsAppNumber(phone)
+        WhatsAppNumber(phone)
     except ValueError:
         return WebhookResponse(status="ignored", reason="invalid_phone")
 
-    client = await client_repo.find_by_whatsapp(str(wa))
+    if not phone_number_id:
+        return WebhookResponse(status="ignored", reason="missing_phone_number_id")
+
+    client = await client_repo.find_by_phone_number_id(phone_number_id)
     if client is None:
         return WebhookResponse(status="ignored", reason="no_client")
     if not client.is_active:

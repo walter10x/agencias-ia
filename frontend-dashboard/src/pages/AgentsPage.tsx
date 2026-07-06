@@ -48,7 +48,7 @@ export default function AgentsPage() {
             <Building2 size={32} className="text-zinc-600 mx-auto mb-4 stroke-[1.5]" />
             <p className="text-sm text-zinc-400 mb-4">Crea un cliente primero para poder crear agentes</p>
             <button
-              onClick={() => navigate("/clients")}
+              onClick={() => navigate("/app/clients")}
               className="px-4 py-2 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
             >
               Ir a Clientes
@@ -125,7 +125,7 @@ export default function AgentsPage() {
               {agents.map((agent) => (
                 <div
                   key={agent.id}
-                  onClick={() => navigate(`/agents/${agent.id}`)}
+                  onClick={() => navigate(`/app/agents/${agent.id}`)}
                   className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">

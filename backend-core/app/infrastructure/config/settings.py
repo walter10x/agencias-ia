@@ -36,9 +36,8 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     llm_model: str = "gpt-4o-mini"
 
-    # Evolution API (WhatsApp)
-    evolution_api_url: str = ""
-    evolution_api_key: str = ""
+    # Conversaciones (memoria del agente)
+    conversation_history_limit: int = 10
 
     # WhatsApp Cloud API (Meta)
     whatsapp_phone_number_id: str = ""
@@ -64,6 +63,21 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
+
+    # Cifrado de credenciales por tenant (Fase 3 — Fernet).
+    # Vacío por defecto: FernetCredentialsCipher degrada a un fallback
+    # base64 SOLO-DEV (ver app/infrastructure/security/credentials_cipher.py).
+    # Generar con: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    credentials_encryption_key: str = ""
+
+    # Recordatorios de cita (Fase 4). Frecuencia del job periódico de
+    # Celery beat que busca y envía recordatorios — ver
+    # app/infrastructure/config/celery_app.py (beat_schedule) y
+    # app/infrastructure/celery/reminders.py (send_appointment_reminders).
+    # Debe coincidir con el intervalo real del beat: la tarea usa este
+    # mismo valor como ancho de la ventana de selección de citas, para
+    # cubrir el tiempo entre ejecuciones sin huecos ni duplicados.
+    reminder_beat_interval_minutes: int = 10
 
 
 @lru_cache

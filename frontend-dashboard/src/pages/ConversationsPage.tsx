@@ -155,7 +155,7 @@ export default function ConversationsPage() {
           {conversations.map((conv: ConversationData) => (
             <div
               key={conv.id}
-              onClick={() => navigate(`/conversations/${conv.id}`)}
+              onClick={() => navigate(`/app/conversations/${conv.id}`)}
               className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors cursor-pointer group"
             >
               <div className="flex items-center justify-between">

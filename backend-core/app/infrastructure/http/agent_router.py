@@ -16,7 +16,7 @@ from app.application.dtos import (
     UpdateAgentInput,
 )
 from app.application.dtos import CurrentClientOutput
-from app.infrastructure.http.dependencies import get_agent_repo, get_current_client
+from app.infrastructure.http.dependencies import get_agent_repo, get_current_client, superadmin_or_own_client
 from app.infrastructure.http.schemas import (
     AgentResponse,
     AgentUpdateRequest,
@@ -36,7 +36,7 @@ async def delete_agent(
 ):
     uc = DeleteAgentUseCase(agent_repo=repo)
     dto = DeleteAgentInput(agent_id=agent_id)
-    await uc.execute(dto, client_id=current_client.client_id)
+    await uc.execute(dto, client_id=superadmin_or_own_client(current_client))
     return None
 
 
@@ -49,7 +49,7 @@ async def deactivate_agent(
 ):
     uc = DeactivateAgentUseCase(agent_repo=repo)
     dto = DeactivateAgentInput(agent_id=agent_id)
-    return agent_output_to_response(await uc.execute(dto, client_id=current_client.client_id))
+    return agent_output_to_response(await uc.execute(dto, client_id=superadmin_or_own_client(current_client)))
 
 
 # E8: GET /{agent_id} — get agent by id
@@ -61,7 +61,7 @@ async def get_agent(
 ):
     uc = GetAgentUseCase(agent_repo=repo)
     dto = GetAgentInput(agent_id=agent_id)
-    return agent_output_to_response(await uc.execute(dto, client_id=current_client.client_id))
+    return agent_output_to_response(await uc.execute(dto, client_id=superadmin_or_own_client(current_client)))
 
 
 # E10: PATCH /{agent_id} — update agent
@@ -87,4 +87,4 @@ async def update_agent(
         ),
         knowledge_base_refs=body.knowledge_base_refs,
     )
-    return agent_output_to_response(await uc.execute(dto, client_id=current_client.client_id))
+    return agent_output_to_response(await uc.execute(dto, client_id=superadmin_or_own_client(current_client)))

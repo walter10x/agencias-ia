@@ -652,6 +652,108 @@ def email_log_to_output(log: EmailLog) -> EmailLogOutput:
 
 
 # ============================================================================
+# Input DTOs — Appointment
+# ============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class CreateAppointmentInput:
+    client_id: str
+    starts_at: str  # ISO 8601; si es naive se interpreta en el tz del negocio
+    contact_phone: str
+    contact_name: str = ""
+    ends_at: str | None = None  # default: starts_at + duración del negocio
+    notes: str = ""
+    conversation_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CancelAppointmentInput:
+    client_id: str
+    appointment_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class RescheduleAppointmentInput:
+    client_id: str
+    appointment_id: str
+    new_starts_at: str
+    new_ends_at: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ListAppointmentsInput:
+    client_id: str
+    date_from: str | None = None  # ISO date o datetime
+    date_to: str | None = None
+    status: str | None = None
+    limit: int = 50
+    offset: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class GetAvailabilityInput:
+    client_id: str
+    date: str  # YYYY-MM-DD
+
+
+# ============================================================================
+# Output DTOs — Appointment
+# ============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class AppointmentOutput:
+    id: str
+    client_id: str
+    conversation_id: str | None
+    contact_phone: str
+    contact_name: str
+    starts_at: str
+    ends_at: str
+    status: str
+    notes: str
+    reminder_sent_at: str | None
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class AvailabilitySlotOutput:
+    starts_at: str  # ISO 8601 (UTC)
+    ends_at: str
+    label: str  # "HH:MM" en hora local del negocio
+
+
+@dataclass(frozen=True, slots=True)
+class AvailabilityOutput:
+    date: str
+    timezone: str
+    slot_duration_minutes: int
+    slots: list[AvailabilitySlotOutput]
+
+
+def appointment_to_output(appt: "Appointment") -> AppointmentOutput:
+    """Map an Appointment entity to AppointmentOutput DTO."""
+    from app.domain.appointment.entity import AppointmentStatus
+
+    return AppointmentOutput(
+        id=str(appt.id),
+        client_id=str(appt.client_id),
+        conversation_id=str(appt.conversation_id) if appt.conversation_id else None,
+        contact_phone=appt.contact_phone,
+        contact_name=appt.contact_name,
+        starts_at=appt.starts_at.isoformat(),
+        ends_at=appt.ends_at.isoformat(),
+        status=appt.status.value if isinstance(appt.status, AppointmentStatus) else appt.status,
+        notes=appt.notes,
+        reminder_sent_at=appt.reminder_sent_at.isoformat() if appt.reminder_sent_at else None,
+        created_at=appt.created_at.isoformat(),
+        updated_at=appt.updated_at.isoformat(),
+    )
+
+
+# ============================================================================
 # Input DTOs — Auth
 # ============================================================================
 
@@ -718,6 +820,20 @@ class RejectClientInput:
 @dataclass(frozen=True, slots=True)
 class DisconnectWhatsappInput:
     client_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectWhatsappInput:
+    """Input para conectar el número de WhatsApp Cloud API de un tenant.
+
+    NO se hace ninguna llamada de red a Meta para validar las
+    credenciales (decisión explícita de la Fase 3: el sandbox/CI no
+    tiene salida a Meta). El access_token se cifra antes de persistirse.
+    """
+
+    client_id: str
+    phone_number_id: str
+    access_token: str
 
 
 @dataclass(frozen=True, slots=True)

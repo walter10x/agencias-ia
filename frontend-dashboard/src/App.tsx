@@ -19,6 +19,7 @@ const ConversationsPage = lazy(() => import("@/pages/ConversationsPage"));
 const ConversationDetailPage = lazy(() => import("@/pages/ConversationDetailPage"));
 const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 const LeadDetailPage = lazy(() => import("@/pages/LeadDetailPage"));
+const AppointmentsPage = lazy(() => import("@/pages/AppointmentsPage"));
 const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
 const TemplateApplyPage = lazy(() => import("@/pages/TemplateApplyPage"));
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
@@ -52,25 +53,26 @@ function AppLayout() {
       <div className="lg:hidden absolute top-4 left-4 z-50">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 bg-zinc-900 rounded-lg border border-zinc-800 text-white shadow-lg"
+          className="p-2.5 glass-card rounded-xl shadow-lg"
         >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex">
+        <div className="lg:hidden fixed inset-0 z-40 flex">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
           <Sidebar
-            className="w-[80vw] max-w-xs shadow-2xl"
+            className="w-[80vw] max-w-xs shadow-2xl animate-slide-left border-r border-zinc-800"
             onCloseMobile={() => setIsMobileMenuOpen(false)}
           />
-          <div className="flex-1" onClick={() => setIsMobileMenuOpen(false)} />
         </div>
       )}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
+          <div className="absolute top-[-5%] right-[-5%] w-[600px] h-[600px] bg-amber-500/[0.02] rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-amber-500/[0.01] rounded-full blur-[100px]" />
         </div>
         <main className="flex-1 overflow-y-auto overflow-x-hidden relative z-10">
           <Outlet />
@@ -103,6 +105,7 @@ export default function App() {
                     <Route path="/app/conversations/:id" element={<ConversationDetailPage />} />
                     <Route path="/app/leads" element={<LeadsPage />} />
                     <Route path="/app/leads/:id" element={<LeadDetailPage />} />
+                    <Route path="/app/appointments" element={<AppointmentsPage />} />
                     <Route path="/app/templates" element={<TemplatesPage />} />
                     <Route path="/app/templates/:slug/apply" element={<TemplateApplyPage />} />
                     <Route path="/app/profile" element={null} />

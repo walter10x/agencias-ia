@@ -7,11 +7,13 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.application.auth.approve_client import ApproveClientUseCase
+from app.application.auth.connect_whatsapp import ConnectWhatsappUseCase
 from app.application.auth.reject_client import RejectClientUseCase
 from app.application.auth.disconnect_whatsapp import DisconnectWhatsappUseCase
 from app.application.dtos import (
     AdminClientOutput,
     ApproveClientInput,
+    ConnectWhatsappInput,
     DisconnectWhatsappInput,
     RejectClientInput,
 )
@@ -279,3 +281,130 @@ class TestDisconnectWhatsappUseCase:
             await uc.execute(inp, current_role="client_admin")
 
         mock_repo.find_by_id.assert_not_awaited()
+
+
+# ============================================================================
+# ConnectWhatsappUseCase (Fase 3, tarea 3.1/5.1)
+# ============================================================================
+
+
+class TestConnectWhatsappUseCase:
+    CLIENT_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+
+    @pytest.mark.asyncio
+    async def test_connect_approved_client(self) -> None:
+        client = _make_client(
+            id=uuid.UUID(self.CLIENT_ID),
+            email=Email("test@example.com"),
+            password_hash=PasswordHash(_VALID_FAKE_HASH),
+            role=ClientRole.CLIENT_ADMIN,
+            status=ClientStatus.APPROVED,
+            is_active=True,
+            phone_number_id="",
+            whatsapp_connected=False,
+        )
+        mock_repo = AsyncMock(spec=ClientRepository)
+        mock_repo.find_by_id.return_value = client
+
+        uc = ConnectWhatsappUseCase(mock_repo)
+        inp = ConnectWhatsappInput(
+            client_id=self.CLIENT_ID,
+            phone_number_id="123456789",
+            access_token="EAAB...secret-token",
+        )
+
+        output = await uc.execute(inp, current_role="superadmin")
+
+        assert isinstance(output, AdminClientOutput)
+        assert output.whatsapp_connected is True
+
+        mock_repo.save.assert_awaited_once()
+        saved = mock_repo.save.call_args[0][0]
+        assert saved.phone_number_id == "123456789"
+        assert saved.whatsapp_connected is True
+
+        # El token en claro se persiste (cifrado) por un método separado,
+        # NUNCA a través de save() del agregado de dominio.
+        mock_repo.save_whatsapp_credentials.assert_awaited_once_with(
+            client_id=self.CLIENT_ID,
+            phone_number_id="123456789",
+            access_token="EAAB...secret-token",
+        )
+
+    @pytest.mark.asyncio
+    async def test_connect_not_found_raises(self) -> None:
+        mock_repo = AsyncMock(spec=ClientRepository)
+        mock_repo.find_by_id.return_value = None
+
+        uc = ConnectWhatsappUseCase(mock_repo)
+        inp = ConnectWhatsappInput(
+            client_id=self.CLIENT_ID, phone_number_id="123", access_token="tok"
+        )
+
+        with pytest.raises(InvalidClientError, match="not found"):
+            await uc.execute(inp, current_role="superadmin")
+
+        mock_repo.save.assert_not_awaited()
+        mock_repo.save_whatsapp_credentials.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_connect_non_superadmin_raises(self) -> None:
+        mock_repo = AsyncMock(spec=ClientRepository)
+
+        uc = ConnectWhatsappUseCase(mock_repo)
+        inp = ConnectWhatsappInput(
+            client_id=self.CLIENT_ID, phone_number_id="123", access_token="tok"
+        )
+
+        with pytest.raises(ForbiddenError, match="Only superadmin"):
+            await uc.execute(inp, current_role="client_admin")
+
+        mock_repo.find_by_id.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_connect_empty_phone_number_id_raises(self) -> None:
+        mock_repo = AsyncMock(spec=ClientRepository)
+
+        uc = ConnectWhatsappUseCase(mock_repo)
+        inp = ConnectWhatsappInput(client_id=self.CLIENT_ID, phone_number_id="  ", access_token="tok")
+
+        with pytest.raises(InvalidClientError, match="phone_number_id"):
+            await uc.execute(inp, current_role="superadmin")
+
+        mock_repo.find_by_id.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_connect_empty_access_token_raises(self) -> None:
+        mock_repo = AsyncMock(spec=ClientRepository)
+
+        uc = ConnectWhatsappUseCase(mock_repo)
+        inp = ConnectWhatsappInput(client_id=self.CLIENT_ID, phone_number_id="123", access_token=" ")
+
+        with pytest.raises(InvalidClientError, match="access_token"):
+            await uc.execute(inp, current_role="superadmin")
+
+        mock_repo.find_by_id.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_connect_client_not_approved_raises(self) -> None:
+        client = _make_client(
+            id=uuid.UUID(self.CLIENT_ID),
+            email=Email("test@example.com"),
+            password_hash=PasswordHash(_VALID_FAKE_HASH),
+            role=ClientRole.CLIENT_ADMIN,
+            status=ClientStatus.PENDING,
+            is_active=True,
+        )
+        mock_repo = AsyncMock(spec=ClientRepository)
+        mock_repo.find_by_id.return_value = client
+
+        uc = ConnectWhatsappUseCase(mock_repo)
+        inp = ConnectWhatsappInput(
+            client_id=self.CLIENT_ID, phone_number_id="123456789", access_token="tok"
+        )
+
+        with pytest.raises(InvalidClientError, match="approved"):
+            await uc.execute(inp, current_role="superadmin")
+
+        mock_repo.save.assert_not_awaited()
+        mock_repo.save_whatsapp_credentials.assert_not_awaited()

@@ -95,7 +95,7 @@ export default function TemplateApplyPage() {
             La plantilla "{slug}" no existe o ha sido removida.
           </p>
           <button
-            onClick={() => navigate("/templates")}
+            onClick={() => navigate("/app/templates")}
             className="px-4 py-2 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors inline-flex items-center gap-2"
           >
             <ArrowLeft size={16} />
@@ -115,7 +115,7 @@ export default function TemplateApplyPage() {
       {/* Breadcrumb */}
       <div className="relative z-10 flex items-center gap-2 text-sm text-zinc-500">
         <button
-          onClick={() => navigate("/templates")}
+          onClick={() => navigate("/app/templates")}
           className="hover:text-zinc-300 transition-colors"
         >
           Plantillas
@@ -227,7 +227,7 @@ export default function TemplateApplyPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => navigate("/templates")}
+                  onClick={() => navigate("/app/templates")}
                   className="flex-1 px-4 py-2.5 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors border border-zinc-700"
                 >
                   Cancelar
@@ -325,7 +325,7 @@ export default function TemplateApplyPage() {
                 <button
                   onClick={() => {
                     setSuccessData(null);
-                    navigate(`/clients/${successData.clientId}`);
+                    navigate(`/app/clients/${successData.clientId}`);
                   }}
                   className="text-xs text-amber-500 hover:text-amber-400 underline"
                 >
@@ -342,7 +342,7 @@ export default function TemplateApplyPage() {
                 <button
                   onClick={() => {
                     setSuccessData(null);
-                    navigate(`/agents/${successData.agentId}`);
+                    navigate(`/app/agents/${successData.agentId}`);
                   }}
                   className="text-xs text-amber-500 hover:text-amber-400 underline"
                 >
@@ -354,7 +354,7 @@ export default function TemplateApplyPage() {
             <button
               onClick={() => {
                 setSuccessData(null);
-                navigate("/templates");
+                navigate("/app/templates");
               }}
               className="w-full px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
             >
