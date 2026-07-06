@@ -28,7 +28,12 @@ class TestSendConfirmation:
     @pytest.mark.asyncio
     async def test_sends_with_client_credentials(self) -> None:
         repo = _fake_repo(True, phone_number_id="tenant-pnid", access_token="tenant-token")
-        settings = SimpleNamespace(whatsapp_access_token="", whatsapp_phone_number_id="")
+        settings = SimpleNamespace(
+            whatsapp_access_token="",
+            whatsapp_phone_number_id="",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
+        )
 
         sender = MagicMock()
         sender.send.return_value = WhatsAppSendResult(status=WhatsAppSendStatus.OK)
@@ -61,7 +66,10 @@ class TestSendConfirmation:
     async def test_falls_back_to_global_credentials(self) -> None:
         repo = _fake_repo(False)
         settings = SimpleNamespace(
-            whatsapp_access_token="global-token", whatsapp_phone_number_id="global-pnid"
+            whatsapp_access_token="global-token",
+            whatsapp_phone_number_id="global-pnid",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
         )
 
         sender = MagicMock()
@@ -93,7 +101,12 @@ class TestSendConfirmation:
     @pytest.mark.asyncio
     async def test_returns_false_without_any_credentials(self) -> None:
         repo = _fake_repo(False)
-        settings = SimpleNamespace(whatsapp_access_token="", whatsapp_phone_number_id="")
+        settings = SimpleNamespace(
+            whatsapp_access_token="",
+            whatsapp_phone_number_id="",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
+        )
         sender = MagicMock()
         notifier = WhatsAppAppointmentNotifier(sender=sender)
 
@@ -120,7 +133,12 @@ class TestSendConfirmation:
     @pytest.mark.asyncio
     async def test_returns_false_when_sender_fails(self) -> None:
         repo = _fake_repo(True, phone_number_id="pnid", access_token="token")
-        settings = SimpleNamespace(whatsapp_access_token="", whatsapp_phone_number_id="")
+        settings = SimpleNamespace(
+            whatsapp_access_token="",
+            whatsapp_phone_number_id="",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
+        )
         sender = MagicMock()
         sender.send.return_value = WhatsAppSendResult(
             status=WhatsAppSendStatus.TOKEN_INVALID, detail="expired"
@@ -150,7 +168,12 @@ class TestSendConfirmation:
     async def test_never_raises_when_credentials_resolution_fails(self) -> None:
         repo = MagicMock()
         repo.get_whatsapp_credentials = AsyncMock(side_effect=RuntimeError("db down"))
-        settings = SimpleNamespace(whatsapp_access_token="", whatsapp_phone_number_id="")
+        settings = SimpleNamespace(
+            whatsapp_access_token="",
+            whatsapp_phone_number_id="",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
+        )
         sender = MagicMock()
         notifier = WhatsAppAppointmentNotifier(sender=sender)
 

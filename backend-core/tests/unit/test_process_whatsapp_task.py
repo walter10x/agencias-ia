@@ -384,6 +384,8 @@ class TestResolveWhatsappCredentials:
         settings = SimpleNamespace(
             whatsapp_access_token="global-token",
             whatsapp_phone_number_id="global-pnid",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
         )
         fake_creds = SimpleNamespace(
             phone_number_id="tenant-pnid",
@@ -412,6 +414,8 @@ class TestResolveWhatsappCredentials:
         settings = SimpleNamespace(
             whatsapp_access_token="global-token",
             whatsapp_phone_number_id="global-pnid",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
         )
         fake_creds = SimpleNamespace(phone_number_id="", access_token="", has_credentials=False)
         fake_repo = MagicMock()
@@ -433,7 +437,12 @@ class TestResolveWhatsappCredentials:
         assert is_owned is False
 
     def test_returns_empty_when_no_credentials_anywhere(self) -> None:
-        settings = SimpleNamespace(whatsapp_access_token="", whatsapp_phone_number_id="")
+        settings = SimpleNamespace(
+            whatsapp_access_token="",
+            whatsapp_phone_number_id="",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
+        )
         fake_creds = SimpleNamespace(phone_number_id="", access_token="", has_credentials=False)
         fake_repo = MagicMock()
         fake_repo.get_whatsapp_credentials = AsyncMock(return_value=fake_creds)
@@ -458,6 +467,8 @@ class TestResolveWhatsappCredentials:
         settings = SimpleNamespace(
             whatsapp_access_token="global-token",
             whatsapp_phone_number_id="global-pnid",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
         )
         fake_repo = MagicMock()
         fake_repo.get_whatsapp_credentials = AsyncMock(side_effect=RuntimeError("db down"))

@@ -363,4 +363,3 @@ async def test_get_business_schedule_returns_none_for_missing_client(
     schedule = await repo.get_business_schedule("does-not-exist")
 
     assert schedule is None
-    assert payload["whatsapp_connected"] is True

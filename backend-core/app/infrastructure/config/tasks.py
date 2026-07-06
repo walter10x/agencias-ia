@@ -359,12 +359,16 @@ def _send_whatsapp_message(client_id: str, phone: str, text: str, settings) -> s
         return "skipped"
 
     sender = WhatsAppSender(api_version=settings.whatsapp_api_version)
-    result = sender.send(
-        phone_number_id=phone_number_id,
-        access_token=access_token,
-        to=phone,
-        text=text,
-    )
+    try:
+        result = sender.send(
+            phone_number_id=phone_number_id,
+            access_token=access_token,
+            to=phone,
+            text=text,
+        )
+    except Exception as exc:  # noqa: BLE001 — el envío nunca debe tumbar la tarea
+        logger.error(f"[WHATSAPP] Excepción no esperada enviando a {phone}: {exc}")
+        return "failed"
 
     if not result.ok:
         logger.error(
