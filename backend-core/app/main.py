@@ -122,6 +122,8 @@ app.include_router(landing_public_router, prefix="/api/v1/landing", tags=["Landi
 app.include_router(landing_admin_router, prefix="/api/v1/clients", tags=["Landing Admin"])
 app.include_router(email_router, prefix="/api/v1/emails", tags=["Email Marketing"])
 
-# Register WhatsApp webhook
+# Register WhatsApp webhooks (Meta + YCloud)
 from app.infrastructure.whatsapp.webhook import router as whatsapp_router
+from app.infrastructure.whatsapp.ycloud_webhook import router as ycloud_whatsapp_router
 app.include_router(whatsapp_router, tags=["WhatsApp"])
+app.include_router(ycloud_whatsapp_router, tags=["WhatsApp"])

@@ -62,6 +62,10 @@ from celery.utils.log import get_task_logger
 from app.domain.appointment.entity import Appointment, BusinessSchedule
 from app.infrastructure.config.celery_app import celery_app
 from app.infrastructure.config.settings import get_settings
+from app.infrastructure.whatsapp.channel import (
+    build_whatsapp_sender,
+    resolve_global_channel_credentials,
+)
 from app.infrastructure.whatsapp.sender import WhatsAppSender
 
 logger = get_task_logger(__name__)
@@ -153,7 +157,7 @@ async def _send_appointment_reminders_async(now: datetime | None = None) -> dict
     appointment_repo = _build_appointment_repo()
     schedule_repo = _build_schedule_repo()
     client_repo = _build_client_repo()
-    sender = WhatsAppSender(api_version=settings.whatsapp_api_version)
+    sender = build_whatsapp_sender(settings)
 
     candidates = await appointment_repo.find_reminder_candidates(
         starts_from=now,
@@ -337,15 +341,15 @@ async def _resolve_credentials(client_id: str) -> tuple[str, str]:
     if creds.has_credentials:
         return creds.phone_number_id, creds.access_token
 
-    if settings.whatsapp_phone_number_id and settings.whatsapp_access_token:
+    global_id, global_token = resolve_global_channel_credentials(settings)
+    if global_id and global_token:
         logger.warning(
             f"[REMINDERS] client_id={client_id} sin credenciales propias — "
             "usando credenciales GLOBALES de env (fallback MVP)."
         )
-        return settings.whatsapp_phone_number_id, settings.whatsapp_access_token
+        return global_id, global_token
 
     return "", ""
-
 
 # ---------------------------------------------------------------------------
 # Construcción de adaptadores (mismo patrón que tasks.py / appointment_notifier)

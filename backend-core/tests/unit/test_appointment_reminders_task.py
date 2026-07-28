@@ -90,7 +90,7 @@ async def _run(
             reminders_module, "_build_schedule_repo", return_value=schedule_repo
         ),
         patch.object(reminders_module, "_build_client_repo", return_value=client_repo),
-        patch.object(reminders_module, "WhatsAppSender", return_value=sender),
+        patch.object(reminders_module, "build_whatsapp_sender", return_value=sender),
     ):
         result = await reminders_module._send_appointment_reminders_async(now=NOW)
     return result, sender

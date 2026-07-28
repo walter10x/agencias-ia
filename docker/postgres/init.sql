@@ -183,6 +183,75 @@ ALTER TABLE clients
 CREATE UNIQUE INDEX idx_clients_landing_slug ON clients (landing_slug) WHERE landing_slug <> '';
 
 -- ============================================================
+-- Migracion 003: Agenda (appointments + business_hours)
+-- ============================================================
+
+ALTER TABLE clients
+    ADD COLUMN business_hours JSONB NOT NULL DEFAULT '{
+        "timezone": "UTC",
+        "weekly": {
+            "monday":    [["09:00", "18:00"]],
+            "tuesday":   [["09:00", "18:00"]],
+            "wednesday": [["09:00", "18:00"]],
+            "thursday":  [["09:00", "18:00"]],
+            "friday":    [["09:00", "18:00"]],
+            "saturday":  [],
+            "sunday":    []
+        }
+    }'::jsonb,
+    ADD COLUMN appointment_duration_minutes INTEGER NOT NULL DEFAULT 30
+        CHECK (appointment_duration_minutes BETWEEN 5 AND 480);
+
+CREATE TABLE appointments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+    contact_phone TEXT NOT NULL,
+    contact_name TEXT NOT NULL DEFAULT '',
+    starts_at TIMESTAMPTZ NOT NULL,
+    ends_at TIMESTAMPTZ NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed')),
+    notes TEXT NOT NULL DEFAULT '',
+    reminder_sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_appointments_time_range CHECK (ends_at > starts_at)
+);
+
+CREATE INDEX idx_appointments_client_starts ON appointments(client_id, starts_at);
+CREATE INDEX idx_appointments_client_status ON appointments(client_id, status);
+CREATE INDEX idx_appointments_client_phone ON appointments(client_id, contact_phone);
+CREATE INDEX idx_appointments_reminder ON appointments(starts_at)
+    WHERE reminder_sent_at IS NULL AND status IN ('pending', 'confirmed');
+
+CREATE TRIGGER trg_appointments_updated
+    BEFORE UPDATE ON appointments
+    FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON appointments FOR ALL USING (true);
+
+-- ============================================================
+-- Migracion 004: status en messages
+-- ============================================================
+
+ALTER TABLE messages
+    ADD COLUMN status TEXT NOT NULL DEFAULT 'received'
+        CHECK (status IN ('received', 'sent', 'failed', 'skipped'));
+
+-- ============================================================
+-- Migracion 005: credenciales WhatsApp cifradas por tenant
+-- ============================================================
+
+ALTER TABLE clients
+    ADD COLUMN IF NOT EXISTS whatsapp_access_token_encrypted TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS idx_clients_phone_number_id
+    ON clients (phone_number_id)
+    WHERE phone_number_id <> '';
+
+-- ============================================================
 -- PostgREST: Grant all privileges to web_anon role
 -- ============================================================
 

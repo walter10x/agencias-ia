@@ -45,6 +45,19 @@ class Settings(BaseSettings):
     whatsapp_verify_token: str = "my-verify-token"
     whatsapp_api_version: str = "v22.0"
 
+    # Canal WhatsApp: "meta" (Cloud API) o "ycloud" (BSP + Coexistence).
+    # El webhook Meta (/webhook/whatsapp) sigue activo; el de YCloud es
+    # /webhook/ycloud. El envío (Celery / notifiers) usa este flag.
+    whatsapp_provider: str = "meta"
+
+    # YCloud (BSP oficial Meta — Coexistence)
+    ycloud_api_key: str = ""
+    ycloud_webhook_secret: str = ""
+    ycloud_api_base_url: str = "https://api.ycloud.com"
+    # Número E.164 del negocio (from) cuando no hay credenciales por tenant.
+    # Si vacío, se reutiliza whatsapp_phone_number_id (debe ser E.164 con +).
+    ycloud_from_number: str = ""
+
     # n8n
     n8n_url: str = ""
     n8n_api_key: str = ""

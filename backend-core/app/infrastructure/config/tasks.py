@@ -28,7 +28,11 @@ from app.infrastructure.persistence.agent_repository import SupabaseAgentReposit
 from app.infrastructure.persistence.conversation_repository import (
     SupabaseConversationRepository,
 )
-from app.infrastructure.whatsapp.sender import WhatsAppSender
+from app.infrastructure.whatsapp.channel import (
+    build_whatsapp_sender,
+    is_ycloud_provider,
+    resolve_global_channel_credentials,
+)
 
 logger = get_task_logger(__name__)
 
@@ -321,19 +325,21 @@ def _resolve_whatsapp_credentials_sync(client_id: str) -> tuple[str, str, bool]:
         logger.error(f"[WHATSAPP] Error resolviendo credenciales del tenant {client_id}: {exc}")
 
     # Fallback: credenciales globales de env (número de pruebas del MVP).
-    if settings.whatsapp_phone_number_id and settings.whatsapp_access_token:
+    global_id, global_token = resolve_global_channel_credentials(settings)
+    if global_id and global_token:
+        provider = "ycloud" if is_ycloud_provider(settings) else "meta"
         logger.warning(
             f"[WHATSAPP] client_id={client_id} sin credenciales propias — "
-            "usando credenciales GLOBALES de env (fallback MVP). Configura "
-            "credenciales propias vía /clients/{client_id}/connect-whatsapp."
+            f"usando credenciales GLOBALES de env (fallback MVP, provider={provider}). "
+            "Configura credenciales propias vía /clients/{client_id}/connect-whatsapp."
         )
-        return settings.whatsapp_phone_number_id, settings.whatsapp_access_token, False
+        return global_id, global_token, False
 
     return "", "", False
 
 
 def _send_whatsapp_message(client_id: str, phone: str, text: str, settings) -> str:
-    """Send WhatsApp message via Meta Cloud API, con credenciales por tenant.
+    """Send WhatsApp message vía Meta o YCloud según ``whatsapp_provider``.
 
     Resuelve las credenciales del cliente (tarea 3.2); si el cliente no
     tiene credenciales propias, aplica el fallback a las credenciales
@@ -343,7 +349,7 @@ def _send_whatsapp_message(client_id: str, phone: str, text: str, settings) -> s
     mensaje no se envía, no se simula un envío exitoso).
 
     Returns:
-        "sent" si Meta confirmó el envío, "failed" si el envío falló,
+        "sent" si el canal confirmó el envío, "failed" si el envío falló,
         "skipped" si no hay credenciales disponibles en ningún nivel.
     """
     phone_number_id, access_token, _is_client_owned = _resolve_whatsapp_credentials_sync(
@@ -358,7 +364,7 @@ def _send_whatsapp_message(client_id: str, phone: str, text: str, settings) -> s
         logger.info(f"[WHATSAPP] To: {phone} | {text[:100]}")
         return "skipped"
 
-    sender = WhatsAppSender(api_version=settings.whatsapp_api_version)
+    sender = build_whatsapp_sender(settings)
     try:
         result = sender.send(
             phone_number_id=phone_number_id,

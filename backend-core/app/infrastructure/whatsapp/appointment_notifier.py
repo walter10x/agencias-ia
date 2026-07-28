@@ -17,16 +17,20 @@ import logging
 from app.application.ports.appointment_notification_port import (
     AppointmentNotificationPort,
 )
-from app.infrastructure.whatsapp.sender import WhatsAppSender
+from app.infrastructure.whatsapp.channel import (
+    build_whatsapp_sender,
+    resolve_global_channel_credentials,
+)
+from app.infrastructure.whatsapp.sender import WhatsAppSendResult
 
 logger = logging.getLogger(__name__)
 
 
 class WhatsAppAppointmentNotifier(AppointmentNotificationPort):
-    """Notificador de citas que envía la confirmación por WhatsApp Cloud API."""
+    """Notificador de citas que envía la confirmación por WhatsApp (Meta o YCloud)."""
 
-    def __init__(self, sender: WhatsAppSender | None = None) -> None:
-        self._sender = sender or WhatsAppSender()
+    def __init__(self, sender=None) -> None:
+        self._sender = sender
 
     async def send_confirmation(
         self,
@@ -58,9 +62,12 @@ class WhatsAppAppointmentNotifier(AppointmentNotificationPort):
             "escríbenos por este mismo chat."
         )
 
+        from app.infrastructure.config.settings import get_settings
+
+        sender = self._sender or build_whatsapp_sender(get_settings())
         try:
-            result = await asyncio.to_thread(
-                self._sender.send,
+            result: WhatsAppSendResult = await asyncio.to_thread(
+                sender.send,
                 phone_number_id,
                 access_token,
                 contact_phone,
@@ -97,11 +104,12 @@ class WhatsAppAppointmentNotifier(AppointmentNotificationPort):
         if creds.has_credentials:
             return creds.phone_number_id, creds.access_token
 
-        if settings.whatsapp_phone_number_id and settings.whatsapp_access_token:
+        global_id, global_token = resolve_global_channel_credentials(settings)
+        if global_id and global_token:
             logger.warning(
                 f"[APPOINTMENT_NOTIFY] client_id={client_id} sin credenciales "
                 "propias — usando credenciales GLOBALES de env (fallback MVP)."
             )
-            return settings.whatsapp_phone_number_id, settings.whatsapp_access_token
+            return global_id, global_token
 
         return "", ""

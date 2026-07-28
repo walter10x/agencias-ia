@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode, useRef } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { CheckCircle, XCircle, X } from "lucide-react";
 
 type ToastType = "success" | "error";
