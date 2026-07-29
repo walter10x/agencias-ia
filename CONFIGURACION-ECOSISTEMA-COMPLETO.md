@@ -211,7 +211,7 @@ Flujo típico:
 
 ---
 
-## 5.3 Plantilla Meta — recordatorio de demo (paso 21)
+## 5.2 Plantilla Meta — recordatorio de demo (paso 21)
 
 El beat ya envía recordatorios (~24h antes). Fuera de la ventana 24h de chat, Meta exige **plantilla HSM**.
 
@@ -240,7 +240,7 @@ Código: `YCloudWhatsAppSender.send_template` + `reminders._send_reminder`.
 
 ---
 
-## 5.2 Operativa — Inbox como backup humano (paso 22)
+## 5.3 Operativa — Inbox como backup humano (paso 22)
 
 Canal principal: **bot Agencia IA** (webhook YCloud → Celery → LLM → respuesta).  
 Backup humano: **WhatsApp Business / Inbox YCloud** del número `+34 682 743 315`.  
