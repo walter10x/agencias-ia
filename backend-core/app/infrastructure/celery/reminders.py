@@ -92,9 +92,37 @@ def _format_starts_at_label(starts_at: datetime) -> str:
     (tools.py importa dependencias de LLM que no hacen falta para
     enviar un recordatorio).
     """
+    date_part, time_part = _format_date_and_time(starts_at)
+    return f"{date_part} a las {time_part}"
+
+
+def _format_date_and_time(starts_at: datetime) -> tuple[str, str]:
+    """Separa fecha y hora para plantillas HSM con 4 variables."""
     weekday = _WEEKDAY_ES[starts_at.weekday()]
     month = _MONTH_ES[starts_at.month]
-    return f"{weekday} {starts_at.day} de {month} a las {starts_at.strftime('%H:%M')}"
+    date_part = f"{weekday} {starts_at.day} de {month}"
+    time_part = starts_at.strftime("%H:%M")
+    return date_part, time_part
+
+
+def build_reminder_template_body_parameters(
+    *,
+    contact_name: str,
+    business_name: str,
+    starts_at: datetime,
+) -> list[str]:
+    """Parámetros BODY para ``appointment_reminder_2`` (biblioteca Meta/YCloud).
+
+    Orden del template:
+    1. nombre del contacto
+    2. nombre del negocio
+    3. fecha
+    4. hora
+    """
+    date_part, time_part = _format_date_and_time(starts_at)
+    nombre = (contact_name or "").strip() or "hola"
+    negocio = (business_name or "").strip() or "nuestro negocio"
+    return [nombre, negocio, date_part, time_part]
 
 
 def build_reminder_message(business_name: str, starts_at_label: str) -> str:
@@ -298,7 +326,6 @@ def _send_reminder(
     """
     settings = settings or get_settings()
     label = _format_starts_at_label(appointment.starts_at)
-    negocio = business_name or "nuestro negocio"
     template_name = (getattr(settings, "whatsapp_reminder_template_name", "") or "").strip()
     language = (
         getattr(settings, "whatsapp_reminder_template_language", None) or "es"
@@ -306,13 +333,18 @@ def _send_reminder(
 
     try:
         if template_name and hasattr(sender, "send_template"):
+            body_params = build_reminder_template_body_parameters(
+                contact_name=appointment.contact_name or "",
+                business_name=business_name,
+                starts_at=appointment.starts_at,
+            )
             result = sender.send_template(
                 phone_number_id,
                 access_token,
                 appointment.contact_phone,
                 template_name=template_name,
                 language_code=language,
-                body_parameters=[negocio, label],
+                body_parameters=body_params,
             )
         else:
             if template_name and not hasattr(sender, "send_template"):

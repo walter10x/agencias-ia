@@ -389,6 +389,9 @@ class TestReminderTemplatePath:
         kwargs = sender.send_template.call_args.kwargs
         assert kwargs["template_name"] == "cita_recordatorio"
         assert kwargs["language_code"] == "es"
-        assert kwargs["body_parameters"][0] == "Peluquería Ana"
-        assert "a las" in kwargs["body_parameters"][1]
+        # appointment_reminder_2 / biblioteca: nombre, negocio, fecha, hora
+        assert kwargs["body_parameters"][0] == "Ana"
+        assert kwargs["body_parameters"][1] == "Peluquería Ana"
+        assert len(kwargs["body_parameters"]) == 4
+        assert "a las" not in kwargs["body_parameters"][2]
         sender.send.assert_not_called()

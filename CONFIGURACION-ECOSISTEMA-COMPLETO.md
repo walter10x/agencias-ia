@@ -217,26 +217,26 @@ El beat ya envía recordatorios (~24h antes). Fuera de la ventana 24h de chat, M
 
 ### Qué hacer tú en YCloud / Meta
 
-1. YCloud → WhatsApp → **Message Templates** → Create.
-2. Nombre sugerido: `cita_recordatorio` (idioma `es` o `es_ES`).
-3. Categoría: **UTILITY**.
-4. Body (exacto, 2 variables):
+Plantilla elegida (biblioteca): **`appointment_reminder_2`** · Español.
 
-```text
-¡Hola! Te recordamos tu cita en {{1}} para el {{2}}. Si necesitas cambiarla o cancelarla, escríbenos por este mismo chat.
-```
+Body (4 variables, en este orden al enviar):
+1. nombre del contacto  
+2. nombre del negocio (`Orinoco Studios`)  
+3. fecha  
+4. hora  
 
-5. Esperar estado **APPROVED** (puede tardar horas/días).
-6. En Dokploy env:
+Botón estático: `https://agencias.orinocostudios.org`
+
+Cuando Meta diga **APPROVED**, el env de prod ya queda así:
 
 ```env
-WHATSAPP_REMINDER_TEMPLATE_NAME=cita_recordatorio
+WHATSAPP_REMINDER_TEMPLATE_NAME=appointment_reminder_2
 WHATSAPP_REMINDER_TEMPLATE_LANGUAGE=es
 ```
 
-7. Redeploy backend/celery. Sin ese env, sigue el texto libre (solo OK si el lead escribió hace &lt;24h).
+Hasta entonces los recordatorios intentarán HSM; si Meta aún no aprueba, fallarán y se reintentan en el siguiente beat (o caen a texto libre solo si quitas el env).
 
-Código: `YCloudWhatsAppSender.send_template` + `reminders._send_reminder`.
+Código: `YCloudWhatsAppSender.send_template` + `build_reminder_template_body_parameters`.
 
 ---
 
