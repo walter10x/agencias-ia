@@ -66,7 +66,6 @@ from app.infrastructure.whatsapp.channel import (
     build_whatsapp_sender,
     resolve_global_channel_credentials,
 )
-from app.infrastructure.whatsapp.sender import WhatsAppSender
 
 logger = get_task_logger(__name__)
 
@@ -248,6 +247,7 @@ async def _send_appointment_reminders_async(now: datetime | None = None) -> dict
             access_token=access_token,
             appointment=appointment,
             business_name=business_name,
+            settings=settings,
         )
 
         if not ok:
@@ -283,27 +283,50 @@ async def _send_appointment_reminders_async(now: datetime | None = None) -> dict
 
 def _send_reminder(
     *,
-    sender: WhatsAppSender,
+    sender,
     phone_number_id: str,
     access_token: str,
     appointment: Appointment,
     business_name: str,
+    settings=None,
 ) -> bool:
     """Envía el recordatorio de UNA cita. No lanza — retorna éxito/fallo.
 
-    Punto de sustitución futuro por plantilla HSM: ver docstring de
-    `build_reminder_message`.
+    Si ``whatsapp_reminder_template_name`` está configurado y el sender
+    soporta ``send_template`` (YCloud), usa HSM. Si no, texto libre
+    (puede fallar fuera de la ventana 24h).
     """
+    settings = settings or get_settings()
     label = _format_starts_at_label(appointment.starts_at)
-    text = build_reminder_message(business_name, label)
+    negocio = business_name or "nuestro negocio"
+    template_name = (getattr(settings, "whatsapp_reminder_template_name", "") or "").strip()
+    language = (
+        getattr(settings, "whatsapp_reminder_template_language", None) or "es"
+    ).strip() or "es"
 
     try:
-        result = sender.send(
-            phone_number_id=phone_number_id,
-            access_token=access_token,
-            to=appointment.contact_phone,
-            text=text,
-        )
+        if template_name and hasattr(sender, "send_template"):
+            result = sender.send_template(
+                phone_number_id,
+                access_token,
+                appointment.contact_phone,
+                template_name=template_name,
+                language_code=language,
+                body_parameters=[negocio, label],
+            )
+        else:
+            if template_name and not hasattr(sender, "send_template"):
+                logger.warning(
+                    "[REMINDERS] Plantilla configurada pero el sender no soporta "
+                    "send_template — usando texto libre."
+                )
+            text = build_reminder_message(business_name, label)
+            result = sender.send(
+                phone_number_id=phone_number_id,
+                access_token=access_token,
+                to=appointment.contact_phone,
+                text=text,
+            )
     except Exception as exc:  # noqa: BLE001 — nunca debe tumbar el ciclo
         logger.error(
             f"[REMINDERS] Excepción enviando recordatorio "

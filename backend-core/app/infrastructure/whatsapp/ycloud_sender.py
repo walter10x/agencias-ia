@@ -49,7 +49,7 @@ def categorize_ycloud_error(status_code: int, response_body: dict | str) -> What
 
 
 class YCloudWhatsAppSender:
-    """Envía textos vía ``POST /v2/whatsapp/messages/sendDirectly``."""
+    """Envía textos y plantillas vía ``POST /v2/whatsapp/messages/sendDirectly``."""
 
     def __init__(
         self,
@@ -68,21 +68,74 @@ class YCloudWhatsAppSender:
             to: Destinatario (E.164 o dígitos).
             text: Cuerpo del mensaje.
         """
+        return self._post(
+            access_token=access_token,
+            payload={
+                "from": ensure_e164(phone_number_id),
+                "to": ensure_e164(to),
+                "type": "text",
+                "text": {"body": text},
+            },
+            to_for_log=ensure_e164(to),
+        )
+
+    def send_template(
+        self,
+        phone_number_id: str,
+        access_token: str,
+        to: str,
+        *,
+        template_name: str,
+        language_code: str = "es",
+        body_parameters: list[str] | None = None,
+    ) -> WhatsAppSendResult:
+        """Envía un mensaje de plantilla (HSM) aprobada por Meta.
+
+        Args:
+            phone_number_id: Número **from** del negocio (E.164).
+            access_token: YCloud API Key.
+            to: Destinatario.
+            template_name: Nombre exacto de la plantilla en YCloud/Meta.
+            language_code: Código idioma (ej. ``es``, ``es_ES``).
+            body_parameters: Valores para ``{{1}}``, ``{{2}}``, … del BODY.
+        """
+        params = [
+            {"type": "text", "text": str(value)}
+            for value in (body_parameters or [])
+        ]
+        template: dict = {
+            "name": template_name,
+            "language": {"code": language_code},
+        }
+        if params:
+            template["components"] = [
+                {"type": "body", "parameters": params},
+            ]
+        return self._post(
+            access_token=access_token,
+            payload={
+                "from": ensure_e164(phone_number_id),
+                "to": ensure_e164(to),
+                "type": "template",
+                "template": template,
+            },
+            to_for_log=ensure_e164(to),
+        )
+
+    def _post(
+        self,
+        *,
+        access_token: str,
+        payload: dict,
+        to_for_log: str,
+    ) -> WhatsAppSendResult:
         import httpx
 
-        from_number = ensure_e164(phone_number_id)
-        to_number = ensure_e164(to)
         url = f"{self._base}/v2/whatsapp/messages/sendDirectly"
-
         try:
             resp = httpx.post(
                 url,
-                json={
-                    "from": from_number,
-                    "to": to_number,
-                    "type": "text",
-                    "text": {"body": text},
-                },
+                json=payload,
                 headers={
                     "Content-Type": "application/json",
                     "X-API-Key": access_token,
@@ -90,14 +143,14 @@ class YCloudWhatsAppSender:
                 timeout=self._timeout,
             )
         except httpx.TimeoutException as exc:
-            logger.error(f"[YCLOUD] Timeout enviando a {to_number}: {exc}")
+            logger.error(f"[YCLOUD] Timeout enviando a {to_for_log}: {exc}")
             return WhatsAppSendResult(status=WhatsAppSendStatus.UNKNOWN_ERROR, detail="timeout")
         except httpx.HTTPError as exc:
-            logger.error(f"[YCLOUD] Error de red enviando a {to_number}: {exc}")
+            logger.error(f"[YCLOUD] Error de red enviando a {to_for_log}: {exc}")
             return WhatsAppSendResult(status=WhatsAppSendStatus.UNKNOWN_ERROR, detail=str(exc)[:200])
 
         if resp.is_success:
-            logger.info(f"[YCLOUD] Enviado a {to_number}")
+            logger.info(f"[YCLOUD] Enviado a {to_for_log} (type={payload.get('type')})")
             return WhatsAppSendResult(status=WhatsAppSendStatus.OK)
 
         body: dict | str

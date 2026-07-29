@@ -63,6 +63,8 @@ def _settings(**overrides) -> SimpleNamespace:
         whatsapp_phone_number_id="",
         whatsapp_access_token="",
         whatsapp_api_version="v22.0",
+        whatsapp_reminder_template_name="",
+        whatsapp_reminder_template_language="es",
     )
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -76,10 +78,14 @@ async def _run(
     settings,
     sender_result: WhatsAppSendResult | None = None,
 ):
+    ok = sender_result or WhatsAppSendResult(status=WhatsAppSendStatus.OK)
     sender = MagicMock()
-    sender.send.return_value = sender_result or WhatsAppSendResult(
-        status=WhatsAppSendStatus.OK
-    )
+    sender.send.return_value = ok
+    # MagicMock always "has" send_template; only used when template name is set.
+    sender.send_template.return_value = ok
+    # Force free-text path when no template configured (hasattr would be True).
+    if not (getattr(settings, "whatsapp_reminder_template_name", "") or "").strip():
+        del sender.send_template
 
     with (
         patch.object(reminders_module, "get_settings", return_value=settings),
@@ -357,3 +363,32 @@ class TestBuildReminderMessage:
             "", "lunes 7 de enero a las 10:00"
         )
         assert "nuestro negocio" in text
+
+
+class TestReminderTemplatePath:
+    @pytest.mark.asyncio
+    async def test_uses_send_template_when_configured(self) -> None:
+        appt = _make_appointment(starts_at=NOW + timedelta(hours=24))
+        appt_repo = FakeAppointmentRepository()
+        await appt_repo.save(appt)
+        schedule_repo = FakeScheduleRepository(
+            BusinessSchedule(reminder_offset_minutes=1440, timezone="UTC")
+        )
+        client_repo = _fake_client_repo()
+        settings = _settings(whatsapp_reminder_template_name="cita_recordatorio")
+
+        result, sender = await _run(
+            appointment_repo=appt_repo,
+            schedule_repo=schedule_repo,
+            client_repo=client_repo,
+            settings=settings,
+        )
+
+        assert result["sent"] == 1
+        sender.send_template.assert_called_once()
+        kwargs = sender.send_template.call_args.kwargs
+        assert kwargs["template_name"] == "cita_recordatorio"
+        assert kwargs["language_code"] == "es"
+        assert kwargs["body_parameters"][0] == "Peluquería Ana"
+        assert "a las" in kwargs["body_parameters"][1]
+        sender.send.assert_not_called()

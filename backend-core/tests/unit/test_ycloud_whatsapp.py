@@ -90,6 +90,30 @@ class TestYCloudSender:
         assert kwargs["json"]["to"] == "+34602438307"
         assert kwargs["json"]["type"] == "text"
 
+    def test_successful_send_template(self) -> None:
+        sender = YCloudWhatsAppSender()
+        mock_resp = MagicMock()
+        mock_resp.is_success = True
+        mock_resp.status_code = 200
+        with patch("httpx.post", return_value=mock_resp) as post:
+            result = sender.send_template(
+                "+34682743315",
+                "KEY",
+                "34602438307",
+                template_name="cita_recordatorio",
+                language_code="es",
+                body_parameters=["Orinoco Studios", "jueves 10:00"],
+            )
+
+        assert result.ok is True
+        payload = post.call_args.kwargs["json"]
+        assert payload["type"] == "template"
+        assert payload["template"]["name"] == "cita_recordatorio"
+        assert payload["template"]["language"]["code"] == "es"
+        assert payload["template"]["components"][0]["parameters"][0]["text"] == (
+            "Orinoco Studios"
+        )
+
 
 @pytest.fixture
 def ycloud_app() -> FastAPI:

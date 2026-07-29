@@ -184,7 +184,7 @@ Flujo típico:
 | # | Paso | Estado |
 |---|------|--------|
 | 20 | Agenda / demos funcionando para Orinoco | ✅ Hecho (2026-07-29) — WhatsApp real OK |
-| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | ⏸ Después (solo si hace falta fuera de ventana 24h) |
+| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | 🔄 Código HSM listo; falta crear/aprobar plantilla en YCloud (ver §5.3) |
 | 22 | Inbox YCloud solo como **backup humano** | ✅ Hecho — playbook §5.2 + prompt handoff en prod |
 
 ### Fase F — Extras
@@ -203,11 +203,40 @@ Flujo típico:
 | **A** | Paso 20 ✅ | Bot padre agenda demos |
 | **B** | Paso 23 — aviso equipo ✅ | Orinoco se entera al instante sin mirar el panel |
 | **C** | Paso 22 — Inbox backup | Operativa: humano solo si hace falta |
-| **D** | Hardening secretos | Rotar keys/passwords antes de más clientes |
-| **E** | Paso 21 — plantillas | Recordatorios / follow-up fuera de 24h |
+| **D** | Hardening secretos | ⏸ Aplazado (decisión 2026-07-30) |
+| **E** | Paso 21 — plantillas | 🔄 Código OK; aprobación Meta pendiente |
 | **F** | Paso 24 — 2º tenant | Primer cliente externo = prueba SaaS |
 
 **Regla:** Orinoco = tenant #1 (bot padre). Todo lo que funcione aquí se clona en el paso 24.
+
+---
+
+## 5.3 Plantilla Meta — recordatorio de demo (paso 21)
+
+El beat ya envía recordatorios (~24h antes). Fuera de la ventana 24h de chat, Meta exige **plantilla HSM**.
+
+### Qué hacer tú en YCloud / Meta
+
+1. YCloud → WhatsApp → **Message Templates** → Create.
+2. Nombre sugerido: `cita_recordatorio` (idioma `es` o `es_ES`).
+3. Categoría: **UTILITY**.
+4. Body (exacto, 2 variables):
+
+```text
+¡Hola! Te recordamos tu cita en {{1}} para el {{2}}. Si necesitas cambiarla o cancelarla, escríbenos por este mismo chat.
+```
+
+5. Esperar estado **APPROVED** (puede tardar horas/días).
+6. En Dokploy env:
+
+```env
+WHATSAPP_REMINDER_TEMPLATE_NAME=cita_recordatorio
+WHATSAPP_REMINDER_TEMPLATE_LANGUAGE=es
+```
+
+7. Redeploy backend/celery. Sin ese env, sigue el texto libre (solo OK si el lead escribió hace &lt;24h).
+
+Código: `YCloudWhatsAppSender.send_template` + `reminders._send_reminder`.
 
 ---
 

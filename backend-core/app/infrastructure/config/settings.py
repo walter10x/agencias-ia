@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     # Vacío = no enviar alerta de equipo (solo confirmación al contacto).
     team_notify_whatsapp: str = ""
 
+    # Plantilla HSM para recordatorios de cita (fuera de ventana 24h).
+    # Vacío = fallback a texto libre (solo funciona si el lead escribió hace <24h).
+    whatsapp_reminder_template_name: str = ""
+    whatsapp_reminder_template_language: str = "es"
+
     # Redis
     redis_url: str = "redis://redis:6379/0"
 
