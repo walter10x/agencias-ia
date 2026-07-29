@@ -185,7 +185,7 @@ Flujo típico:
 |---|------|--------|
 | 20 | Agenda / demos funcionando para Orinoco | ✅ Hecho (2026-07-29) — WhatsApp real OK |
 | 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | ⏸ Después (solo si hace falta fuera de ventana 24h) |
-| 22 | Inbox YCloud solo como **backup humano** | 🔄 En curso — playbook §5.2 |
+| 22 | Inbox YCloud solo como **backup humano** | ✅ Hecho — playbook §5.2 + prompt handoff en prod |
 
 ### Fase F — Extras
 
