@@ -184,8 +184,8 @@ Flujo típico:
 | # | Paso | Estado |
 |---|------|--------|
 | 20 | Agenda / demos funcionando para Orinoco | ✅ Hecho (2026-07-29) — WhatsApp real OK |
-| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | 🔄 Código HSM listo; falta crear/aprobar plantilla en YCloud (ver §5.3) |
-| 22 | Inbox YCloud solo como **backup humano** | ✅ Hecho — playbook §5.2 + prompt handoff en prod |
+| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | 🔄 Código HSM listo; falta crear/aprobar plantilla en YCloud (ver §5.2) |
+| 22 | Inbox YCloud solo como **backup humano** | ✅ Hecho — playbook §5.3 + prompt handoff en prod |
 
 ### Fase F — Extras
 
@@ -299,7 +299,7 @@ El mensaje llega a la API (bot) **y** a la app Business. Si el lead escribe otra
 - [x] Webhook → URL pública de nuestra API  
 - [x] Eventos suscritos: `whatsapp.inbound_message.received` (+ updated según dashboard)  
 - [ ] Plantillas (demo reminder, follow-up) cuando hagan falta  
-- [x] Inbox como backup humano (playbook §5.2) 
+- [x] Inbox como backup humano (playbook §5.3) 
 
 ### En Agencia IA (esta app)
 
