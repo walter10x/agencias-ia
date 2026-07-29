@@ -98,8 +98,13 @@ def process_whatsapp_message(
             "id": str(agent.id),
             "name": agent.name,
         }
-        client_context = {
+        # phone / contact_* alimentan tools de agenda (agendar_cita sin
+        # pedir el número otra vez). conversation_id se completa tras persistir.
+        client_context: dict = {
             "id": client_id,
+            "phone": phone,
+            "contact_phone": phone,
+            "contact_name": push_name or "",
         }
         user_message = build_user_message(phone, message, push_name)
 
@@ -112,6 +117,8 @@ def process_whatsapp_message(
             agent_id=str(agent.id),
             history_limit=settings.conversation_history_limit,
         )
+        if conversation is not None:
+            client_context["conversation_id"] = str(conversation.id)
 
         # --- Paso 7: Ejecutar LangGraph Agent ---
         loop = asyncio.new_event_loop()

@@ -163,6 +163,24 @@ class TestIncomingPersistence:
 # ======================================================================
 
 
+class TestAgendaClientContext:
+    def test_client_context_includes_phone_and_conversation(
+        self, run_task, conv_repo: AsyncMock
+    ) -> None:
+        existing = _make_existing_conversation()
+        conv_repo.find_by_client_and_phone.return_value = existing
+
+        _, run_agent_mock, _ = run_task()
+
+        kwargs = run_agent_mock.await_args.kwargs
+        ctx = kwargs["client_context"]
+        assert ctx["id"] == str(CLIENT_UUID)
+        assert ctx["phone"] == PHONE
+        assert ctx["contact_phone"] == PHONE
+        assert ctx["contact_name"] == "Juan"
+        assert ctx["conversation_id"] == str(CONV_UUID)
+
+
 class TestHistoryInjection:
     def test_history_passed_as_chat_messages(
         self, run_task, conv_repo: AsyncMock
