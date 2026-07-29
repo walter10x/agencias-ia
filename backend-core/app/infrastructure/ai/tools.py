@@ -327,10 +327,15 @@ async def _agendar_cita(
         )
     )
 
-    # Confirmación por WhatsApp (Fase 2, tarea 2.6) — BEST-EFFORT: un
-    # fallo de envío NUNCA debe deshacer la cita ni propagar una excepción
-    # al LLM. Se loguea y se sigue.
-    await _send_appointment_confirmation(client_id, telefono, output.starts_at)
+    # Confirmación al contacto + alerta al equipo — BEST-EFFORT: un fallo
+    # de envío NUNCA debe deshacer la cita ni propagar una excepción al LLM.
+    await _notify_appointment_booked(
+        client_id=client_id,
+        contact_phone=telefono,
+        contact_name=nombre,
+        starts_at_iso=output.starts_at,
+        notes=notas,
+    )
 
     return (
         f"Cita agendada correctamente para {nombre or 'el cliente'} "
@@ -339,10 +344,14 @@ async def _agendar_cita(
     )
 
 
-async def _send_appointment_confirmation(
-    client_id: str, contact_phone: str, starts_at_iso: str
+async def _notify_appointment_booked(
+    client_id: str,
+    contact_phone: str,
+    contact_name: str,
+    starts_at_iso: str,
+    notes: str = "",
 ) -> None:
-    """Envía la confirmación de cita al contacto. Best-effort, nunca lanza."""
+    """Confirma al contacto y avisa al equipo. Best-effort, nunca lanza."""
     try:
         client = await _build_client_repo().find_by_id(ClientId.from_string(client_id))
         business_name = client.name if client else ""
@@ -359,9 +368,22 @@ async def _send_appointment_confirmation(
                 f"No se pudo enviar la confirmación de cita por WhatsApp "
                 f"(client_id={client_id}, contact_phone={contact_phone[:4]}...)."
             )
+        team_sent = await notifier.send_team_alert(
+            client_id=client_id,
+            contact_phone=contact_phone,
+            contact_name=contact_name,
+            business_name=business_name,
+            starts_at_label=label,
+            notes=notes,
+        )
+        if team_sent:
+            logger.info(
+                "[APPOINTMENT_NOTIFY] Alerta de equipo enviada "
+                f"(client_id={client_id})."
+            )
     except Exception:  # noqa: BLE001 — best-effort, la cita ya se creó
         logger.exception(
-            f"Error inesperado enviando confirmación de cita "
+            f"Error inesperado notificando cita agendada "
             f"(client_id={client_id})"
         )
 

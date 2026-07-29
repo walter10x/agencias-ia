@@ -88,6 +88,75 @@ class WhatsAppAppointmentNotifier(AppointmentNotificationPort):
             )
         return result.ok
 
+    async def send_team_alert(
+        self,
+        client_id: str,
+        contact_phone: str,
+        contact_name: str,
+        business_name: str,
+        starts_at_label: str,
+        notes: str = "",
+    ) -> bool:
+        from app.infrastructure.config.settings import get_settings
+
+        settings = get_settings()
+        team_phone = (settings.team_notify_whatsapp or "").strip()
+        if not team_phone:
+            logger.info(
+                "[APPOINTMENT_NOTIFY] TEAM_NOTIFY_WHATSAPP vacío — "
+                "alerta de equipo omitida."
+            )
+            return False
+
+        try:
+            phone_number_id, access_token = await self._resolve_credentials(client_id)
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            logger.error(
+                f"[APPOINTMENT_NOTIFY] Error resolviendo credenciales para "
+                f"alerta equipo (client_id={client_id}): {exc}"
+            )
+            return False
+
+        if not phone_number_id or not access_token:
+            logger.warning(
+                f"[APPOINTMENT_NOTIFY] Sin credenciales — alerta equipo NO enviada "
+                f"(client_id={client_id})."
+            )
+            return False
+
+        name = (contact_name or "").strip() or "Sin nombre"
+        notes_line = f"\nNotas: {notes.strip()}" if notes and notes.strip() else ""
+        text = (
+            f"📅 Nueva demo agendada — {business_name or 'Orinoco'}\n"
+            f"Contacto: {name} ({contact_phone})\n"
+            f"Cuándo: {starts_at_label}"
+            f"{notes_line}"
+        )
+
+        sender = self._sender or build_whatsapp_sender(settings)
+        try:
+            result: WhatsAppSendResult = await asyncio.to_thread(
+                sender.send,
+                phone_number_id,
+                access_token,
+                team_phone,
+                text,
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            logger.error(
+                f"[APPOINTMENT_NOTIFY] Excepción enviando alerta equipo "
+                f"(client_id={client_id}): {exc}"
+            )
+            return False
+
+        if not result.ok:
+            logger.error(
+                f"[APPOINTMENT_NOTIFY] Alerta equipo no enviada "
+                f"(client_id={client_id}, categoria={result.status.value}): "
+                f"{result.detail}"
+            )
+        return result.ok
+
     async def _resolve_credentials(self, client_id: str) -> tuple[str, str]:
         """Resuelve credenciales del tenant, con fallback a env (igual que tasks.py)."""
         from app.infrastructure.config.settings import get_settings

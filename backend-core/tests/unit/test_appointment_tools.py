@@ -37,6 +37,7 @@ MONDAY_10 = datetime(2030, 1, 7, 10, 0, tzinfo=timezone.utc)
 def _make_fake_notifier(sent: bool = True) -> MagicMock:
     notifier = MagicMock()
     notifier.send_confirmation = AsyncMock(return_value=sent)
+    notifier.send_team_alert = AsyncMock(return_value=sent)
     return notifier
 
 
@@ -398,6 +399,10 @@ class TestAppointmentConfirmationNotification:
         assert call_kwargs["business_name"] == "Peluquería Ana"
         assert "lunes" in call_kwargs["starts_at_label"]
         assert "10:00" in call_kwargs["starts_at_label"]
+        notifier.send_team_alert.assert_awaited_once()
+        team_kwargs = notifier.send_team_alert.await_args.kwargs
+        assert team_kwargs["contact_name"] == "Ana"
+        assert team_kwargs["contact_phone"] == "584121234567"
 
     @pytest.mark.asyncio
     async def test_appointment_still_created_when_notification_fails(self) -> None:

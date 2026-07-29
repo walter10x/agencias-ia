@@ -181,18 +181,33 @@ Flujo típico:
 
 ### Fase E — Producto (agenda + operación)
 
-| # | Paso |
-|---|------|
-| 20 | Agenda / demos funcionando para Orinoco |
-| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta |
-| 22 | Inbox YCloud solo como **backup humano** |
+| # | Paso | Estado |
+|---|------|--------|
+| 20 | Agenda / demos funcionando para Orinoco | ✅ Hecho (2026-07-29) — WhatsApp real OK |
+| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | ⏸ Después (solo si hace falta fuera de ventana 24h) |
+| 22 | Inbox YCloud solo como **backup humano** | ⏭ Checklist operativa (sin código) |
 
 ### Fase F — Extras (después)
 
-| # | Paso |
-|---|------|
-| 23 | **n8n**: lead → CRM / email al equipo (opcional) |
-| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) |
+| # | Paso | Estado |
+|---|------|--------|
+| 23 | Aviso al equipo al agendar demo (WhatsApp interno; n8n/CRM opcional luego) | 🔄 En curso |
+| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | Pendiente |
+
+---
+
+## 5.1 Roadmap organizado (orden de trabajo)
+
+| Bloque | Qué | Por qué |
+|--------|-----|---------|
+| **A** | Paso 20 ✅ | Bot padre agenda demos |
+| **B** | Paso 23 — aviso equipo | Orinoco se entera al instante sin mirar el panel |
+| **C** | Paso 22 — Inbox backup | Operativa: humano solo si hace falta |
+| **D** | Hardening secretos | Rotar keys/passwords antes de más clientes |
+| **E** | Paso 21 — plantillas | Recordatorios / follow-up fuera de 24h |
+| **F** | Paso 24 — 2º tenant | Primer cliente externo = prueba SaaS |
+
+**Regla:** Orinoco = tenant #1 (bot padre). Todo lo que funcione aquí se clona en el paso 24.
 
 ---
 

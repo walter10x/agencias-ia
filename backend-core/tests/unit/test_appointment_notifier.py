@@ -196,3 +196,79 @@ class TestSendConfirmation:
 
         assert result is False
         sender.send.assert_not_called()
+
+
+class TestSendTeamAlert:
+    @pytest.mark.asyncio
+    async def test_skips_when_team_phone_empty(self) -> None:
+        settings = SimpleNamespace(
+            team_notify_whatsapp="",
+            whatsapp_access_token="tok",
+            whatsapp_phone_number_id="pnid",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
+        )
+        sender = MagicMock()
+        notifier = WhatsAppAppointmentNotifier(sender=sender)
+
+        with patch(
+            "app.infrastructure.config.settings.get_settings",
+            return_value=settings,
+        ):
+            result = await notifier.send_team_alert(
+                client_id=CLIENT_ID,
+                contact_phone="+34600111222",
+                contact_name="Lead",
+                business_name="Orinoco Studios",
+                starts_at_label="jueves 10:00",
+                notes="chatbot",
+            )
+
+        assert result is False
+        sender.send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_sends_alert_to_team_phone(self) -> None:
+        repo = _fake_repo(True, phone_number_id="tenant-pnid", access_token="tenant-token")
+        settings = SimpleNamespace(
+            team_notify_whatsapp="+34602438307",
+            whatsapp_access_token="",
+            whatsapp_phone_number_id="",
+            supabase_url="https://test.supabase.co",
+            supabase_service_key="test-service-key",
+            whatsapp_provider="ycloud",
+            ycloud_api_key="k",
+            ycloud_from_number="+34682743315",
+        )
+        sender = MagicMock()
+        sender.send.return_value = WhatsAppSendResult(status=WhatsAppSendStatus.OK)
+        notifier = WhatsAppAppointmentNotifier(sender=sender)
+
+        with (
+            patch(
+                "app.infrastructure.persistence.client_repository.SupabaseClientRepository",
+                return_value=repo,
+            ),
+            patch(
+                "app.infrastructure.config.settings.get_settings",
+                return_value=settings,
+            ),
+        ):
+            result = await notifier.send_team_alert(
+                client_id=CLIENT_ID,
+                contact_phone="+34600111222",
+                contact_name="Lead Acme",
+                business_name="Orinoco Studios",
+                starts_at_label="jueves 10:00",
+                notes="quiere chatbot",
+            )
+
+        assert result is True
+        sender.send.assert_called_once()
+        args = sender.send.call_args.args
+        assert args[0] == "tenant-pnid"
+        assert args[1] == "tenant-token"
+        assert args[2] == "+34602438307"
+        assert "Lead Acme" in args[3]
+        assert "quiere chatbot" in args[3]
+        assert "Orinoco" in args[3]

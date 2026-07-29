@@ -18,7 +18,7 @@ from abc import ABC, abstractmethod
 
 
 class AppointmentNotificationPort(ABC):
-    """Envía una confirmación de cita al contacto final."""
+    """Envía confirmación al contacto y, opcionalmente, alerta al equipo."""
 
     @abstractmethod
     async def send_confirmation(
@@ -42,5 +42,22 @@ class AppointmentNotificationPort(ABC):
             True si el envío fue exitoso, False en cualquier otro caso
             (sin credenciales, error de Meta, excepción de red, etc).
             NUNCA lanza excepción — best-effort por diseño.
+        """
+        ...
+
+    @abstractmethod
+    async def send_team_alert(
+        self,
+        client_id: str,
+        contact_phone: str,
+        contact_name: str,
+        business_name: str,
+        starts_at_label: str,
+        notes: str = "",
+    ) -> bool:
+        """Avisa al equipo interno que hay una demo/cita nueva.
+
+        Destino: settings.team_notify_whatsapp. Si está vacío, no-op (False).
+        Best-effort: nunca lanza.
         """
         ...

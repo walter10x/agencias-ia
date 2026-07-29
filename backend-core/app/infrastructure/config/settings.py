@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = "Agencia IA <noreply@agencia-ia.com>"
 
+    # Aviso interno al agendar demo/cita (WhatsApp E.164 del equipo).
+    # Vacío = no enviar alerta de equipo (solo confirmación al contacto).
+    team_notify_whatsapp: str = ""
+
     # Redis
     redis_url: str = "redis://redis:6379/0"
 

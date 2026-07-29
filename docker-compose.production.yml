@@ -65,6 +65,9 @@ services:
       YCLOUD_API_BASE_URL: ${YCLOUD_API_BASE_URL:-https://api.ycloud.com}
       YCLOUD_FROM_NUMBER: ${YCLOUD_FROM_NUMBER:-}
 
+      # WhatsApp E.164 del equipo Orinoco (alerta al agendar demo). Vacío = off.
+      TEAM_NOTIFY_WHATSAPP: ${TEAM_NOTIFY_WHATSAPP:-}
+
       # === n8n ===
       N8N_URL: ${N8N_URL:-http://n8n:5678}
       N8N_API_KEY: ${N8N_API_KEY:-}
@@ -230,6 +233,7 @@ services:
       YCLOUD_WEBHOOK_SECRET: ${YCLOUD_WEBHOOK_SECRET:-}
       YCLOUD_API_BASE_URL: ${YCLOUD_API_BASE_URL:-https://api.ycloud.com}
       YCLOUD_FROM_NUMBER: ${YCLOUD_FROM_NUMBER:-}
+      TEAM_NOTIFY_WHATSAPP: ${TEAM_NOTIFY_WHATSAPP:-}
       N8N_URL: ${N8N_URL:-http://n8n:5678}
       N8N_API_KEY: ${N8N_API_KEY:-}
       REDIS_URL: redis://redis:6379/0
@@ -274,6 +278,7 @@ services:
       YCLOUD_WEBHOOK_SECRET: ${YCLOUD_WEBHOOK_SECRET:-}
       YCLOUD_API_BASE_URL: ${YCLOUD_API_BASE_URL:-https://api.ycloud.com}
       YCLOUD_FROM_NUMBER: ${YCLOUD_FROM_NUMBER:-}
+      TEAM_NOTIFY_WHATSAPP: ${TEAM_NOTIFY_WHATSAPP:-}
       N8N_URL: ${N8N_URL:-http://n8n:5678}
       N8N_API_KEY: ${N8N_API_KEY:-}
       REDIS_URL: redis://redis:6379/0
