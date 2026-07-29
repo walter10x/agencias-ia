@@ -192,7 +192,7 @@ Flujo típico:
 | # | Paso | Estado |
 |---|------|--------|
 | 23 | Aviso al equipo al agendar demo (WhatsApp interno; n8n/CRM opcional luego) | ✅ Hecho (código + `TEAM_NOTIFY_WHATSAPP`; deploy OK) |
-| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | Pendiente |
+| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | 🔄 Runbook + SQL template listos (§5.4); falta 2º número WhatsApp real |
 
 ---
 
@@ -202,12 +202,37 @@ Flujo típico:
 |--------|-----|---------|
 | **A** | Paso 20 ✅ | Bot padre agenda demos |
 | **B** | Paso 23 — aviso equipo ✅ | Orinoco se entera al instante sin mirar el panel |
-| **C** | Paso 22 — Inbox backup | Operativa: humano solo si hace falta |
+| **C** | Paso 22 — Inbox backup ✅ | Operativa: humano solo si hace falta |
 | **D** | Hardening secretos | ⏸ Aplazado (decisión 2026-07-30) |
-| **E** | Paso 21 — plantillas | 🔄 Código OK; aprobación Meta pendiente |
-| **F** | Paso 24 — 2º tenant | Primer cliente externo = prueba SaaS |
+| **E** | Paso 21 — plantillas | 🔄 Cableado; esperando APPROVED Meta |
+| **F** | Paso 24 — 2º tenant | 🔄 Checklist + script; bloqueado sin 2º número |
 
 **Regla:** Orinoco = tenant #1 (bot padre). Todo lo que funcione aquí se clona en el paso 24.
+
+**Crítico:** dos tenants **NO** pueden compartir el mismo WhatsApp. El webhook enruta por `phone_number_id` / `to` E.164. El 2º cliente necesita su propio número (YCloud Coexistence u otro canal).
+
+---
+
+## 5.4 Onboarding 2º tenant (paso 24)
+
+### Checklist (cuando tengáis el 2º número)
+
+1. **YCloud / Meta:** conectar el número nuevo (Coexistence o Cloud API).
+2. **Webhook:** misma URL `https://agencias.orinocostudios.org/webhook/ycloud` (eventos inbound).
+3. **BD:** copiar `scripts/onboard-tenant-template.sql`, sustituir placeholders (`__CLIENT_UUID__`, `__PHONE_NUMBER_ID__`, prompt, horario…), ejecutar en `agencia-postgres`.
+4. **Alternativa panel:** registro en `/register` → aprobar (`POST /clients/{id}/approve`) → conectar WA (`POST /clients/{id}/connect-whatsapp` con `phone_number_id` E.164) → crear agente con tools nativas de agenda.
+5. **Smoke:** WhatsApp al número nuevo → responde el agente de ese tenant (no Orinoco).
+6. **Agenda:** “quiero cita” → slot → fila en panel de ese cliente.
+7. **Opcional:** `TEAM_NOTIFY_WHATSAPP` sigue global (MVP); aviso de equipo es el mismo móvil Orinoco hasta que haya notify por tenant.
+
+### Script
+
+- Plantilla: `scripts/onboard-tenant-template.sql`
+- Referencia Orinoco (ya aplicado): `scripts/prod-configure-orinoco-agenda.sql`
+
+### Mientras no haya 2º número
+
+No crear un tenant “falso” con el `+34682743315` de Orinoco: rompería el enrutado. Preparar datos del cliente (nombre, rubro, prompt, horario) y el número; al llegar el número, ejecutar el script en minutos.
 
 ---
 
