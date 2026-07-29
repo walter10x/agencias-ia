@@ -185,13 +185,13 @@ Flujo típico:
 |---|------|--------|
 | 20 | Agenda / demos funcionando para Orinoco | ✅ Hecho (2026-07-29) — WhatsApp real OK |
 | 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | ⏸ Después (solo si hace falta fuera de ventana 24h) |
-| 22 | Inbox YCloud solo como **backup humano** | ⏭ Checklist operativa (sin código) |
+| 22 | Inbox YCloud solo como **backup humano** | 🔄 En curso — playbook §5.2 |
 
-### Fase F — Extras (después)
+### Fase F — Extras
 
 | # | Paso | Estado |
 |---|------|--------|
-| 23 | Aviso al equipo al agendar demo (WhatsApp interno; n8n/CRM opcional luego) | 🔄 En curso |
+| 23 | Aviso al equipo al agendar demo (WhatsApp interno; n8n/CRM opcional luego) | ✅ Hecho (código + `TEAM_NOTIFY_WHATSAPP`; deploy OK) |
 | 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | Pendiente |
 
 ---
@@ -201,13 +201,60 @@ Flujo típico:
 | Bloque | Qué | Por qué |
 |--------|-----|---------|
 | **A** | Paso 20 ✅ | Bot padre agenda demos |
-| **B** | Paso 23 — aviso equipo | Orinoco se entera al instante sin mirar el panel |
+| **B** | Paso 23 — aviso equipo ✅ | Orinoco se entera al instante sin mirar el panel |
 | **C** | Paso 22 — Inbox backup | Operativa: humano solo si hace falta |
 | **D** | Hardening secretos | Rotar keys/passwords antes de más clientes |
 | **E** | Paso 21 — plantillas | Recordatorios / follow-up fuera de 24h |
 | **F** | Paso 24 — 2º tenant | Primer cliente externo = prueba SaaS |
 
 **Regla:** Orinoco = tenant #1 (bot padre). Todo lo que funcione aquí se clona en el paso 24.
+
+---
+
+## 5.2 Operativa — Inbox como backup humano (paso 22)
+
+Canal principal: **bot Agencia IA** (webhook YCloud → Celery → LLM → respuesta).  
+Backup humano: **WhatsApp Business / Inbox YCloud** del número `+34 682 743 315`.  
+**No** activar el AI Agent de YCloud (chocaría con nuestro bot).
+
+### Roles
+
+| Quién | Hace qué |
+|-------|----------|
+| Bot padre | Saluda, califica, agenda demos, cancela citas |
+| Equipo (móvil `TEAM_NOTIFY_WHATSAPP`) | Recibe aviso al agendar; decide si hay que intervenir |
+| Humano en Inbox / Business App | Solo cuando el lead pide persona, hay queja, VIP o el bot se atasca |
+
+### Cuándo entrar tú (humano)
+
+1. El lead dice “quiero hablar con alguien / persona / comercial”.
+2. Queja, enfado o tema legal/contratos.
+3. Caso muy técnico o presupuesto grande que no debe cerrar el bot.
+4. El bot se repite o no entiende tras 2–3 turnos.
+
+### Cómo intervenir
+
+1. Abre **WhatsApp Business** (o Inbox YCloud) del número Orinoco.
+2. Responde en el mismo chat del lead.
+3. Sé claro: “Hola, soy [nombre] del equipo Orinoco…”.
+4. Cierra el siguiente paso (demo, llamada, email) en ese hilo.
+5. Revisa la **Agenda** del panel (`/app/appointments`) si ya hay cita.
+
+### Coexistence (importante)
+
+El mensaje llega a la API (bot) **y** a la app Business. Si el lead escribe otra vez, el bot puede volver a responder. Por ahora:
+
+- Tras tomar el chat, di al lead que le atiende una persona y pide 1 dato concreto (así controláis el hilo).
+- Si el bot “se cuela”, una frase corta del humano basta (“te sigo yo desde aquí”).
+- Pausar el agente por conversación = mejora futura (no bloquea este paso).
+
+### Checklist operativa Orinoco
+
+- [ ] Equipo sabe mirar avisos de `TEAM_NOTIFY_WHATSAPP`
+- [ ] Alguien tiene acceso a WhatsApp Business / Inbox YCloud del `+34682743315`
+- [ ] AI Agent de YCloud sigue **apagado**
+- [ ] Webhook YCloud sigue **Active** → `https://agencias.orinocostudios.org/webhook/ycloud`
+- [ ] Ante “quiero una persona”, el bot cede (prompt actualizado) y no fuerza agenda
 
 ---
 
@@ -220,10 +267,10 @@ Flujo típico:
 - [x] API Key creada (`agencia-ia-orinoco-api-ke`) — rotar si se filtró; guardar solo en secretos  
 - [x] Docs envío + webhook anotadas (§8.1)  
 - [x] Probar envío API (`sendDirectly`) a un número que nos escribió  
-- [ ] Webhook → URL pública de nuestra API (Fase C; hace falta deploy)  
-- [ ] Eventos suscritos: `whatsapp.inbound_message.received` + `whatsapp.message.updated`  
+- [x] Webhook → URL pública de nuestra API  
+- [x] Eventos suscritos: `whatsapp.inbound_message.received` (+ updated según dashboard)  
 - [ ] Plantillas (demo reminder, follow-up) cuando hagan falta  
-- [ ] Inbox como backup humano  
+- [x] Inbox como backup humano (playbook §5.2) 
 
 ### En Agencia IA (esta app)
 
