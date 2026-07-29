@@ -184,7 +184,7 @@ Flujo típico:
 | # | Paso | Estado |
 |---|------|--------|
 | 20 | Agenda / demos funcionando para Orinoco | ✅ Hecho (2026-07-29) — WhatsApp real OK |
-| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | 🔄 Código HSM listo; falta crear/aprobar plantilla en YCloud (ver §5.2) |
+| 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | 🔄 Cableado (`appointment_reminder_2`); esperando APPROVED de Meta |
 | 22 | Inbox YCloud solo como **backup humano** | ✅ Hecho — playbook §5.3 + prompt handoff en prod |
 
 ### Fase F — Extras
