@@ -71,11 +71,11 @@ El sender actual (`tasks.py::_send_whatsapp_message`) usa credenciales **globale
 
 ## Fase 5 — Onboarding y pulido del panel (2-3 días)
 
-| # | Tarea | Criterio de aceptación |
-|---|-------|------------------------|
-| 5.1 | Pantalla "Conectar WhatsApp": formulario phone_number_id + token, botón de prueba de envío | Cliente conecta su número sin tocar la BD |
-| 5.2 | Configuración del bot desde el panel: prompt/personalidad, horario del negocio, duración de cita, offset de recordatorio | Cambios aplican sin redeploy |
-| 5.3 | Estados vacíos y errores en frontend (sin conexión WA, sin citas) | Panel usable por no-técnicos |
+| # | Tarea | Criterio de aceptación | Estado 2026-07-30 |
+|---|-------|------------------------|-------------------|
+| 5.1 | Pantalla "Conectar WhatsApp": formulario phone_number_id + token | Cliente conecta su número sin tocar la BD | ✅ Panel Agencia |
+| 5.2 | Configuración: horario del negocio, duración; prompt vía agente | Cambios aplican sin redeploy | ✅ |
+| 5.3 | Estados vacíos y errores en frontend | Panel usable por no-técnicos | 🔄 Parcial |
 
 ## Fase 6 — Pruebas E2E y piloto (2-3 días)
 
