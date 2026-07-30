@@ -68,6 +68,7 @@ def _make_state(**overrides: Any) -> AgentState:
         client_context=overrides.get("client_context", {"id": "client-1"}),
         tools=overrides.get("tools", []),
         tool_results=overrides.get("tool_results", []),
+        successful_tools=overrides.get("successful_tools", []),
         final_response=str(overrides.get("final_response", "")),
     )
 

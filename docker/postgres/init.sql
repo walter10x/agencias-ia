@@ -131,8 +131,10 @@ CREATE TABLE leads (
     phone TEXT NOT NULL DEFAULT '',
     email TEXT NOT NULL DEFAULT '',
     source TEXT DEFAULT 'whatsapp',
-    status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'qualified', 'converted', 'lost')),
+    status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'qualified', 'converted', 'lost', 'interested', 'not_interested', 'archived')),
+    score INTEGER NOT NULL DEFAULT 0,
     notes TEXT DEFAULT '',
+    last_contacted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

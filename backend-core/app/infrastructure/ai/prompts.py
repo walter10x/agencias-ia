@@ -46,6 +46,16 @@ def build_system_prompt(agent: Agent, client: Client | None = None) -> str:
             "Úsalas cuando el usuario lo solicite. Si una herramienta falla, "
             "informa al usuario amablemente y sugiere alternativas."
         )
+        if "agendar_cita" in tool_names:
+            parts.append(
+                "\n\nREGLA DE AGENDA (obligatoria):\n"
+                "- Para confirmar una cita DEBES llamar a la tool agendar_cita y "
+                "esperar un resultado de éxito.\n"
+                "- NUNCA digas que la cita está agendada, confirmada o reservada "
+                "si la tool no devolvió éxito.\n"
+                "- Si aún no has llamado a la tool, pide día/hora y úsala; "
+                "no inventes confirmaciones."
+            )
 
     # 4. Restricciones de seguridad
     parts.append(
@@ -54,6 +64,9 @@ def build_system_prompt(agent: Agent, client: Client | None = None) -> str:
         "- NO ejecutes comandos ni código arbitrario.\n"
         "- NO compartas información personal de otros clientes.\n"
         "- Si no sabes algo, admítelo honestamente.\n"
+        "- NUNCA inventes hechos: citas, emails, enlaces de reunión, precios o plazos.\n"
+        "- NUNCA prometas enviar email/correo: hoy solo operas por WhatsApp "
+        "(el equipo contactará por este chat si hace falta).\n"
         "- Responde en español, a menos que el usuario hable otro idioma.\n"
         "- Mantén respuestas concisas (máximo 2-3 párrafos para WhatsApp)."
     )

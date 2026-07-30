@@ -15,6 +15,10 @@ from langgraph.graph import END, StateGraph
 
 from app.application.ports.llm_port import LLMPort
 from app.infrastructure.ai.tools import execute_tool
+from app.infrastructure.ai.response_guard import (
+    enforce_tool_truth,
+    tool_result_succeeded,
+)
 
 
 class AgentState(TypedDict):
@@ -26,6 +30,7 @@ class AgentState(TypedDict):
     client_context: dict[str, Any]
     tools: list[dict[str, Any]]
     tool_results: list[dict[str, Any]]
+    successful_tools: list[str]
     final_response: str
 
 
@@ -105,6 +110,7 @@ async def process_tools_node(state: AgentState) -> AgentState:
     tool_calls = last_msg.get("tool_calls", []) if isinstance(last_msg, dict) else []
 
     results: list[dict[str, Any]] = []
+    succeeded = list(state.get("successful_tools") or [])
     for tc in tool_calls:
         tool_name = tc.get("name", "")
         tool_input = tc.get("arguments", {})
@@ -124,8 +130,12 @@ async def process_tools_node(state: AgentState) -> AgentState:
             "tool_name": tool_name,
             "content": result_content,
         })
+        if tool_name and tool_result_succeeded(tool_name, result_content):
+            if tool_name not in succeeded:
+                succeeded.append(tool_name)
 
     state["tool_results"] = results
+    state["successful_tools"] = succeeded
     return state
 
 
@@ -231,6 +241,7 @@ async def run_agent(
         "client_context": client_context,
         "tools": tools,
         "tool_results": [],
+        "successful_tools": [],
         "final_response": "",
     }
 
@@ -243,6 +254,7 @@ async def run_agent(
     messages = final_state.get("messages", [])
     for msg in reversed(messages):
         if isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("content"):
-            return str(msg["content"])
+            raw = str(msg["content"])
+            return enforce_tool_truth(raw, final_state.get("successful_tools") or [])
 
     return "Lo siento, no pude procesar tu mensaje en este momento."
