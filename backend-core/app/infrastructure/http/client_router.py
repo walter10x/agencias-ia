@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.application.appointment.get_business_hours import (
+    GetBusinessHoursInput,
+    GetBusinessHoursUseCase,
+)
+from app.application.appointment.update_business_hours import (
+    UpdateBusinessHoursInput,
+    UpdateBusinessHoursUseCase,
+)
 from app.application.auth.approve_client import ApproveClientUseCase
 from app.application.auth.connect_whatsapp import ConnectWhatsappUseCase
 from app.application.auth.disconnect_whatsapp import DisconnectWhatsappUseCase
@@ -31,7 +39,7 @@ from app.application.dtos import (
     RejectClientInput,
     UpdateClientInput,
 )
-from app.domain.shared.errors import ForbiddenError, InvalidClientError
+from app.domain.shared.errors import ForbiddenError, InvalidAppointmentError, InvalidClientError
 from app.infrastructure.http.dependencies import (
     get_agent_repo,
     get_client_repo,
@@ -42,6 +50,8 @@ from app.infrastructure.http.schemas import (
     AgentCreateRequest,
     AgentListResponse,
     AgentResponse,
+    BusinessHoursResponse,
+    BusinessHoursUpdateRequest,
     ClientCreateRequest,
     ClientListResponse,
     ClientResponse,
@@ -166,6 +176,50 @@ async def list_agents_by_client(
     return AgentListResponse(
         items=[agent_output_to_response(o) for o in outputs],
         count=len(outputs),
+    )
+
+
+@router.get("/{client_id}/schedule", response_model=BusinessHoursResponse)
+async def get_client_schedule(
+    client_id: str,
+    repo: SupabaseClientRepository = Depends(get_client_repo),
+):
+    uc = GetBusinessHoursUseCase(schedule_repo=repo)
+    output = await uc.execute(GetBusinessHoursInput(client_id=client_id))
+    return BusinessHoursResponse(
+        client_id=output.client_id,
+        timezone=output.timezone,
+        appointment_duration_minutes=output.appointment_duration_minutes,
+        reminder_offset_minutes=output.reminder_offset_minutes,
+        weekly=output.weekly,
+    )
+
+
+@router.patch("/{client_id}/schedule", response_model=BusinessHoursResponse)
+async def update_client_schedule(
+    client_id: str,
+    body: BusinessHoursUpdateRequest,
+    repo: SupabaseClientRepository = Depends(get_client_repo),
+):
+    uc = UpdateBusinessHoursUseCase(schedule_repo=repo)
+    try:
+        output = await uc.execute(
+            UpdateBusinessHoursInput(
+                client_id=client_id,
+                timezone=body.timezone,
+                appointment_duration_minutes=body.appointment_duration_minutes,
+                reminder_offset_minutes=body.reminder_offset_minutes,
+                weekly=body.weekly,
+            )
+        )
+    except InvalidAppointmentError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return BusinessHoursResponse(
+        client_id=output.client_id,
+        timezone=output.timezone,
+        appointment_duration_minutes=output.appointment_duration_minutes,
+        reminder_offset_minutes=output.reminder_offset_minutes,
+        weekly=output.weekly,
     )
 
 

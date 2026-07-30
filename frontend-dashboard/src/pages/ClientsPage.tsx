@@ -124,7 +124,16 @@ export default function ClientsPage() {
                     </div>
                   </div>
                 </div>
-                {client.is_active ? <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span> : <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">Inactivo</span>}
+                <div className="flex items-center gap-2 shrink-0">
+                  {client.status === "pending" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Pendiente</span>
+                  )}
+                  {client.is_active ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">Inactivo</span>
+                  )}
+                </div>
               </div>
             </div>
           ))}

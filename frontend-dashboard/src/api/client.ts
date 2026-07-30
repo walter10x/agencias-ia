@@ -8,6 +8,7 @@ export interface ClientData {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  status?: string;
 }
 
 export interface ClientListData {
@@ -24,6 +25,35 @@ export interface ClientCreateInput {
 export interface ClientUpdateInput {
   name?: string;
   whatsapp_number?: string;
+}
+
+export interface BusinessHoursData {
+  client_id: string;
+  timezone: string;
+  appointment_duration_minutes: number;
+  reminder_offset_minutes: number;
+  weekly: Record<string, string[][]>;
+}
+
+export interface BusinessHoursUpdateInput {
+  timezone: string;
+  appointment_duration_minutes: number;
+  reminder_offset_minutes?: number;
+  weekly: Record<string, string[][]>;
+}
+
+export interface AdminClientData {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: string;
+  is_active: boolean;
+  whatsapp_number: string;
+  whatsapp_connected: boolean;
+  plan: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export function fetchClients(
@@ -66,4 +96,26 @@ export function updateClient(
 
 export function deactivateClient(id: string): Promise<ClientData> {
   return apiFetch<ClientData>(`/clients/${id}`, { method: "DELETE" });
+}
+
+export function approveClient(id: string): Promise<AdminClientData> {
+  return apiFetch<AdminClientData>(`/clients/${id}/approve`, { method: "POST" });
+}
+
+export function rejectClient(id: string): Promise<AdminClientData> {
+  return apiFetch<AdminClientData>(`/clients/${id}/reject`, { method: "POST" });
+}
+
+export function fetchClientSchedule(id: string): Promise<BusinessHoursData> {
+  return apiFetch<BusinessHoursData>(`/clients/${id}/schedule`);
+}
+
+export function updateClientSchedule(
+  id: string,
+  data: BusinessHoursUpdateInput,
+): Promise<BusinessHoursData> {
+  return apiFetch<BusinessHoursData>(`/clients/${id}/schedule`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }

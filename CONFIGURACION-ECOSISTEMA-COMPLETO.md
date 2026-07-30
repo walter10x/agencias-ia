@@ -220,7 +220,7 @@ Flujo típico:
 1. **YCloud / Meta:** conectar el número nuevo (Coexistence o Cloud API).
 2. **Webhook:** misma URL `https://agencias.orinocostudios.org/webhook/ycloud` (eventos inbound).
 3. **BD:** copiar `scripts/onboard-tenant-template.sql`, sustituir placeholders (`__CLIENT_UUID__`, `__PHONE_NUMBER_ID__`, prompt, horario…), ejecutar en `agencia-postgres`.
-4. **Alternativa panel:** registro en `/register` → aprobar (`POST /clients/{id}/approve`) → conectar WA (`POST /clients/{id}/connect-whatsapp` con `phone_number_id` E.164) → crear agente con tools nativas de agenda.
+4. **Alternativa panel:** registro en `/register` → abrir cliente en panel (badge **Pendiente**) → **Aprobar** / **Rechazar** (superadmin) → configurar **Horario de negocio** en pestaña Agencia → conectar WA (`POST /clients/{id}/connect-whatsapp` con `phone_number_id` E.164; UI de connect pendiente) → crear agente con tools nativas de agenda.
 5. **Smoke:** WhatsApp al número nuevo → responde el agente de ese tenant (no Orinoco).
 6. **Agenda:** “quiero cita” → slot → fila en panel de ese cliente.
 7. **Opcional:** `TEAM_NOTIFY_WHATSAPP` sigue global (MVP); aviso de equipo es el mismo móvil Orinoco hasta que haya notify por tenant.

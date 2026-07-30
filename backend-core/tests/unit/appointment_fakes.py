@@ -139,3 +139,8 @@ class FakeScheduleRepository(BusinessScheduleRepository):
         if client_id in self.by_client:
             return self.by_client[client_id]
         return self.schedule
+
+    async def save_business_schedule(self, client_id: str, schedule: BusinessSchedule):
+        self.by_client[client_id] = schedule
+        self.schedule = schedule
+        return schedule

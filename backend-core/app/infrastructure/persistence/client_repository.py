@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -258,7 +258,7 @@ class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
         return [self._row_to_client(row) for row in result.data]
 
     # ------------------------------------------------------------------
-    # BusinessScheduleRepository port (módulo de agenda — solo lectura)
+    # BusinessScheduleRepository port (módulo de agenda)
     # ------------------------------------------------------------------
 
     async def get_business_schedule(self, client_id: str) -> Optional[BusinessSchedule]:
@@ -281,6 +281,40 @@ class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
 
         if not result.data:
             return None
+        return self._row_to_schedule(result.data[0])
+
+    async def save_business_schedule(
+        self, client_id: str, schedule: BusinessSchedule
+    ) -> BusinessSchedule:
+        """Persiste business_hours + appointment_duration_minutes del tenant."""
+        from app.domain.shared.errors import ClientNotFoundError
+
+        weekly_json: dict[str, list[list[str]]] = {}
+        for day, ranges in schedule.weekly_hours.items():
+            weekly_json[str(day).lower()] = [[start, end] for start, end in ranges]
+
+        payload = {
+            "business_hours": {
+                "timezone": schedule.timezone,
+                "reminder_offset_minutes": schedule.reminder_offset_minutes,
+                "weekly": weekly_json,
+            },
+            "appointment_duration_minutes": schedule.appointment_duration_minutes,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .update(payload)
+                .eq("id", client_id)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            raise
+
+        if not result.data:
+            raise ClientNotFoundError(f"Client not found: {client_id}")
         return self._row_to_schedule(result.data[0])
 
     @staticmethod

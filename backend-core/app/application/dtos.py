@@ -126,6 +126,7 @@ class ClientOutput:
     is_active: bool
     created_at: str
     updated_at: str
+    status: str = "active"
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +164,7 @@ def client_to_output(client: Client) -> ClientOutput:
         is_active=client.is_active,
         created_at=client.created_at.isoformat(),
         updated_at=client.updated_at.isoformat(),
+        status=client.status.value,
     )
 
 

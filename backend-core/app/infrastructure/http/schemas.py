@@ -46,8 +46,27 @@ class ClientResponse(BaseModel):
     is_active: bool
     created_at: str
     updated_at: str
+    status: str = "active"
 
     model_config = {"from_attributes": True}
+
+
+class BusinessHoursUpdateRequest(BaseModel):
+    timezone: str = Field("Europe/Madrid", min_length=1, max_length=64)
+    appointment_duration_minutes: int = Field(30, ge=5, le=480)
+    reminder_offset_minutes: int = Field(1440, ge=0)
+    weekly: dict[str, list[list[str]]] = Field(
+        ...,
+        description='Horario semanal: {"monday": [["09:00","18:00"]], ...}',
+    )
+
+
+class BusinessHoursResponse(BaseModel):
+    client_id: str
+    timezone: str
+    appointment_duration_minutes: int
+    reminder_offset_minutes: int
+    weekly: dict[str, list[list[str]]]
 
 
 class ClientListResponse(BaseModel):

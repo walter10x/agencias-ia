@@ -111,13 +111,16 @@ class AppointmentRepository(ABC):
 
 
 class BusinessScheduleRepository(ABC):
-    """Puerto de solo lectura para el horario del negocio.
-
-    Lo implementa el repositorio de Client en infraestructura
-    (el horario vive como config del tenant en la tabla clients).
-    """
+    """Puerto para el horario del negocio (config del tenant en `clients`)."""
 
     @abstractmethod
     async def get_business_schedule(self, client_id: str) -> Optional[BusinessSchedule]:
         """Retorna el horario configurado del negocio, o None si el cliente no existe."""
+        ...
+
+    @abstractmethod
+    async def save_business_schedule(
+        self, client_id: str, schedule: BusinessSchedule
+    ) -> BusinessSchedule:
+        """Persiste el horario. Lanza ClientNotFoundError si el cliente no existe."""
         ...

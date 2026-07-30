@@ -1,28 +1,43 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Building2, Phone, Edit, Trash2, Plus, Bot, Loader2, AlertTriangle, Globe, Mail, Send } from "lucide-react";
-import { fetchClient, deactivateClient } from "@/api/client";
+import { ArrowLeft, Building2, Phone, Edit, Trash2, Plus, Bot, Loader2, AlertTriangle, Globe, Mail, Send, Check, X } from "lucide-react";
+import { fetchClient, deactivateClient, approveClient, rejectClient } from "@/api/client";
 import { fetchAgentsByClient } from "@/api/agent";
 import { fetchLandingConfig, updateLandingConfig, type LandingConfig } from "@/api/landing";
 import { fetchEmails, fetchEmailStats, sendEmail, type EmailLogData } from "@/api/email";
 import ClientForm from "@/components/ClientForm";
 import AgentForm from "@/components/AgentForm";
+import BusinessHoursEditor from "@/components/BusinessHoursEditor";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const CARD = "bg-zinc-900 border border-zinc-800 rounded-xl transition-all duration-300 ease-out hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20";
 const BTN = "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-xl transition-all duration-200 ease-out hover:bg-amber-400 hover:shadow-lg hover:shadow-amber-500/20 active:scale-[0.98]";
 const BTN2 = "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-xl border border-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-700 hover:text-white";
 const BTND = "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-400 text-sm font-semibold rounded-xl border border-red-500/20 transition-all duration-200 ease-out hover:bg-red-500/20";
+const BTNOK = "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500/15 text-emerald-400 text-sm font-semibold rounded-xl border border-emerald-500/25 transition-all duration-200 ease-out hover:bg-emerald-500/25";
 const INPUT = "w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm placeholder:text-zinc-600 transition-all duration-200 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10";
 const BADGE_OK = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
 const BADGE_MUT = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700";
+const BADGE_PENDING = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
+
+function statusBadge(status?: string, isActive?: boolean) {
+  if (status === "pending") return <span className={BADGE_PENDING}>Pendiente</span>;
+  if (status === "inactive" || status === "rejected") {
+    return <span className={BADGE_MUT}>Rechazado</span>;
+  }
+  if (isActive === false) return <span className={BADGE_MUT}>Inactivo</span>;
+  return <span className={BADGE_OK}>Activo</span>;
+}
 
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isSuperadmin = user?.role === "superadmin";
 
   const [editOpen, setEditOpen] = useState(false);
   const [agentFormOpen, setAgentFormOpen] = useState(false);
@@ -59,7 +74,28 @@ export default function ClientDetailPage() {
     onError: (err: Error) => toast("error", err.message),
   });
 
+  const approveMutation = useMutation({
+    mutationFn: () => approveClient(id!),
+    onSuccess: () => {
+      toast("success", "Cliente aprobado");
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["client", id] });
+    },
+    onError: (err: Error) => toast("error", err.message),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: () => rejectClient(id!),
+    onSuccess: () => {
+      toast("success", "Cliente rechazado");
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["client", id] });
+    },
+    onError: (err: Error) => toast("error", err.message),
+  });
+
   const client = clientQuery.data;
+  const isPending = client?.status === "pending";
   const agents = agentsQuery.data?.items ?? [];
   const landing = landingQuery.data;
   const emails = emailQuery.data?.items ?? [];
@@ -89,11 +125,34 @@ export default function ClientDetailPage() {
                 <div className="flex items-center gap-3 text-sm text-zinc-400"><span className="flex items-center gap-1.5"><Phone size={13} /> {client.whatsapp_number}</span></div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className={BADGE_MUT}>{client.business_type}</span>
-                  {client.is_active ? <span className={BADGE_OK}>Activo</span> : <span className={BADGE_MUT}>Inactivo</span>}
+                  {statusBadge(client.status, client.is_active)}
                 </div>
               </div>
             </div>
-            <div className="flex gap-2 self-start"><button onClick={() => setEditOpen(true)} className={BTN2}><Edit size={14} /> Editar</button>{client.is_active && <button onClick={() => setConfirmDeactivate(true)} className={BTND}><Trash2 size={14} /> Desactivar</button>}</div>
+            <div className="flex flex-wrap gap-2 self-start">
+              {isSuperadmin && isPending && (
+                <>
+                  <button
+                    onClick={() => approveMutation.mutate()}
+                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                    className={BTNOK}
+                  >
+                    {approveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    Aprobar
+                  </button>
+                  <button
+                    onClick={() => rejectMutation.mutate()}
+                    disabled={approveMutation.isPending || rejectMutation.isPending}
+                    className={BTND}
+                  >
+                    {rejectMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+                    Rechazar
+                  </button>
+                </>
+              )}
+              <button onClick={() => setEditOpen(true)} className={BTN2}><Edit size={14} /> Editar</button>
+              {client.is_active && <button onClick={() => setConfirmDeactivate(true)} className={BTND}><Trash2 size={14} /> Desactivar</button>}
+            </div>
           </div>
         </div>
       </div>
@@ -134,11 +193,14 @@ export default function ClientDetailPage() {
             </div>
           </div>
         ) : activeTab === "info" ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-white tracking-tight">Agentes IA {agents.length>0&&`(${agents.length})`}</h3><button onClick={()=>setAgentFormOpen(true)} className={BTN}><Plus size={14}/>Nuevo Agente</button></div>
-            {agentsQuery.isLoading?<div className="space-y-3">{Array.from({length:3}).map((_,i)=><div key={i} className={CARD+" p-4"}><div className="skeleton h-5 w-36"/></div>)}</div>
-            :agents.length===0?<div className={CARD+" flex flex-col items-center justify-center py-12"}><Bot size={32} className="text-zinc-600 mb-4 empty-state-icon"/><p className="text-sm text-zinc-500 mb-4">Este cliente no tiene agentes</p><button onClick={()=>setAgentFormOpen(true)} className={BTN2}>Crear primer agente</button></div>
-            :<div className="space-y-2">{agents.map(agent=><div key={agent.id} onClick={()=>navigate(`/app/agents/${agent.id}`)} className={CARD+" p-4 cursor-pointer"}><div className="flex items-center justify-between"><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0"><Bot size={18}/></div><div className="min-w-0"><p className="text-white font-medium truncate">{agent.name}</p><p className="text-xs text-zinc-500 truncate">{agent.personality.slice(0,80)}</p></div></div>{agent.is_active?<span className={BADGE_OK}>Activo</span>:<span className={BADGE_MUT}>Inactivo</span>}</div></div>)}</div>}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-white tracking-tight">Agentes IA {agents.length>0&&`(${agents.length})`}</h3><button onClick={()=>setAgentFormOpen(true)} className={BTN}><Plus size={14}/>Nuevo Agente</button></div>
+              {agentsQuery.isLoading?<div className="space-y-3">{Array.from({length:3}).map((_,i)=><div key={i} className={CARD+" p-4"}><div className="skeleton h-5 w-36"/></div>)}</div>
+              :agents.length===0?<div className={CARD+" flex flex-col items-center justify-center py-12"}><Bot size={32} className="text-zinc-600 mb-4 empty-state-icon"/><p className="text-sm text-zinc-500 mb-4">Este cliente no tiene agentes</p><button onClick={()=>setAgentFormOpen(true)} className={BTN2}>Crear primer agente</button></div>
+              :<div className="space-y-2">{agents.map(agent=><div key={agent.id} onClick={()=>navigate(`/app/agents/${agent.id}`)} className={CARD+" p-4 cursor-pointer"}><div className="flex items-center justify-between"><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0"><Bot size={18}/></div><div className="min-w-0"><p className="text-white font-medium truncate">{agent.name}</p><p className="text-xs text-zinc-500 truncate">{agent.personality.slice(0,80)}</p></div></div>{agent.is_active?<span className={BADGE_OK}>Activo</span>:<span className={BADGE_MUT}>Inactivo</span>}</div></div>)}</div>}
+            </div>
+            <BusinessHoursEditor clientId={client.id} />
           </div>
         ) : (
           <div className="space-y-4">
