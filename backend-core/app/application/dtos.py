@@ -127,6 +127,8 @@ class ClientOutput:
     created_at: str
     updated_at: str
     status: str = "active"
+    whatsapp_connected: bool = False
+    phone_number_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +167,8 @@ def client_to_output(client: Client) -> ClientOutput:
         created_at=client.created_at.isoformat(),
         updated_at=client.updated_at.isoformat(),
         status=client.status.value,
+        whatsapp_connected=client.whatsapp_connected,
+        phone_number_id=client.phone_number_id or "",
     )
 
 

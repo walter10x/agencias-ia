@@ -128,6 +128,9 @@ export default function ClientsPage() {
                   {client.status === "pending" && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Pendiente</span>
                   )}
+                  {client.whatsapp_connected && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">WA</span>
+                  )}
                   {client.is_active ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>
                   ) : (

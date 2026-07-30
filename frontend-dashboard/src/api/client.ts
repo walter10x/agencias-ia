@@ -9,6 +9,8 @@ export interface ClientData {
   created_at: string;
   updated_at: string;
   status?: string;
+  whatsapp_connected?: boolean;
+  phone_number_id?: string;
 }
 
 export interface ClientListData {
@@ -117,5 +119,26 @@ export function updateClientSchedule(
   return apiFetch<BusinessHoursData>(`/clients/${id}/schedule`, {
     method: "PATCH",
     body: JSON.stringify(data),
+  });
+}
+
+export interface ConnectWhatsappInput {
+  phone_number_id: string;
+  access_token: string;
+}
+
+export function connectClientWhatsapp(
+  id: string,
+  data: ConnectWhatsappInput,
+): Promise<AdminClientData> {
+  return apiFetch<AdminClientData>(`/clients/${id}/connect-whatsapp`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function disconnectClientWhatsapp(id: string): Promise<AdminClientData> {
+  return apiFetch<AdminClientData>(`/clients/${id}/disconnect-whatsapp`, {
+    method: "POST",
   });
 }

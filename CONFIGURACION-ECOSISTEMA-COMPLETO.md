@@ -192,7 +192,7 @@ Flujo típico:
 | # | Paso | Estado |
 |---|------|--------|
 | 23 | Aviso al equipo al agendar demo (WhatsApp interno; n8n/CRM opcional luego) | ✅ Hecho (código + `TEAM_NOTIFY_WHATSAPP`; deploy OK) |
-| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | 🔄 Runbook + SQL template listos (§5.4); falta 2º número WhatsApp real |
+| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | 🔄 Panel completo (aprobar/horario/WA); falta 2º número WhatsApp real |
 
 ---
 
@@ -205,7 +205,7 @@ Flujo típico:
 | **C** | Paso 22 — Inbox backup ✅ | Operativa: humano solo si hace falta |
 | **D** | Hardening secretos | ⏸ Aplazado (decisión 2026-07-30) |
 | **E** | Paso 21 — plantillas | 🔄 Cableado; esperando APPROVED Meta |
-| **F** | Paso 24 — 2º tenant | 🔄 Checklist + script; bloqueado sin 2º número |
+| **F** | Paso 24 — 2º tenant | 🔄 Panel listo (aprobar + horario + connect WA); bloqueado sin 2º número |
 
 **Regla:** Orinoco = tenant #1 (bot padre). Todo lo que funcione aquí se clona en el paso 24.
 
@@ -220,7 +220,7 @@ Flujo típico:
 1. **YCloud / Meta:** conectar el número nuevo (Coexistence o Cloud API).
 2. **Webhook:** misma URL `https://agencias.orinocostudios.org/webhook/ycloud` (eventos inbound).
 3. **BD:** copiar `scripts/onboard-tenant-template.sql`, sustituir placeholders (`__CLIENT_UUID__`, `__PHONE_NUMBER_ID__`, prompt, horario…), ejecutar en `agencia-postgres`.
-4. **Alternativa panel:** registro en `/register` → abrir cliente en panel (badge **Pendiente**) → **Aprobar** / **Rechazar** (superadmin) → configurar **Horario de negocio** en pestaña Agencia → conectar WA (`POST /clients/{id}/connect-whatsapp` con `phone_number_id` E.164; UI de connect pendiente) → crear agente con tools nativas de agenda.
+4. **Alternativa panel:** registro en `/register` → abrir cliente (badge **Pendiente**) → **Aprobar** → **Horario de negocio** → **WhatsApp** (E.164 + API Key YCloud) → crear agente con tools nativas de agenda.
 5. **Smoke:** WhatsApp al número nuevo → responde el agente de ese tenant (no Orinoco).
 6. **Agenda:** “quiero cita” → slot → fila en panel de ese cliente.
 7. **Opcional:** `TEAM_NOTIFY_WHATSAPP` sigue global (MVP); aviso de equipo es el mismo móvil Orinoco hasta que haya notify por tenant.

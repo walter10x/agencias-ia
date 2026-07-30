@@ -9,6 +9,7 @@ import { fetchEmails, fetchEmailStats, sendEmail, type EmailLogData } from "@/ap
 import ClientForm from "@/components/ClientForm";
 import AgentForm from "@/components/AgentForm";
 import BusinessHoursEditor from "@/components/BusinessHoursEditor";
+import WhatsAppConnectPanel from "@/components/WhatsAppConnectPanel";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -201,6 +202,7 @@ export default function ClientDetailPage() {
               :<div className="space-y-2">{agents.map(agent=><div key={agent.id} onClick={()=>navigate(`/app/agents/${agent.id}`)} className={CARD+" p-4 cursor-pointer"}><div className="flex items-center justify-between"><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0"><Bot size={18}/></div><div className="min-w-0"><p className="text-white font-medium truncate">{agent.name}</p><p className="text-xs text-zinc-500 truncate">{agent.personality.slice(0,80)}</p></div></div>{agent.is_active?<span className={BADGE_OK}>Activo</span>:<span className={BADGE_MUT}>Inactivo</span>}</div></div>)}</div>}
             </div>
             <BusinessHoursEditor clientId={client.id} />
+            <WhatsAppConnectPanel client={client} canManage={isSuperadmin} />
           </div>
         ) : (
           <div className="space-y-4">

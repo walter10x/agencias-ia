@@ -28,14 +28,23 @@ class ClientUpdateRequest(BaseModel):
 
 
 class ConnectWhatsappRequest(BaseModel):
-    """Body para conectar el WhatsApp Cloud API de un tenant (Fase 3.1/5.1).
+    """Body para conectar WhatsApp del tenant (Meta Cloud API o YCloud).
 
-    NO se valida el token contra Meta en esta capa (ni en el use case):
-    el sandbox de desarrollo/CI no tiene salida de red a Meta.
+    YCloud Coexistence: phone_number_id = número E.164 (+34...), access_token = API Key.
+    Meta Cloud API: phone_number_id numérico de Meta, access_token = token permanente.
+    El token se cifra al guardar; no se valida aquí contra la API externa.
     """
 
-    phone_number_id: str = Field(..., min_length=1, description="Meta phone_number_id del WABA del tenant")
-    access_token: str = Field(..., min_length=1, description="Access token de Meta Cloud API (se cifra al guardar)")
+    phone_number_id: str = Field(
+        ...,
+        min_length=1,
+        description="YCloud: E.164 (+34...). Meta: phone_number_id del WABA",
+    )
+    access_token: str = Field(
+        ...,
+        min_length=1,
+        description="YCloud API Key o Meta access token (se cifra al guardar)",
+    )
 
 
 class ClientResponse(BaseModel):
@@ -47,6 +56,8 @@ class ClientResponse(BaseModel):
     created_at: str
     updated_at: str
     status: str = "active"
+    whatsapp_connected: bool = False
+    phone_number_id: str = ""
 
     model_config = {"from_attributes": True}
 
