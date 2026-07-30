@@ -1,5 +1,6 @@
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CalendarDays,
@@ -8,12 +9,19 @@ import {
   Phone,
   FileText,
   AlertTriangle,
+  Loader2,
+  Save,
 } from "lucide-react";
-import { fetchContactByPhone } from "@/api/contact";
+import { fetchContactByPhone, updateContactNotes } from "@/api/contact";
+import { useToast } from "@/components/Toast";
 
 const CARD = "bg-zinc-900 border border-zinc-800 rounded-xl";
+const BTN =
+  "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-xl hover:bg-amber-400 transition-all disabled:opacity-50";
 const BTN2 =
   "inline-flex items-center justify-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-xl border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-all";
+const INPUT =
+  "w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10";
 const BADGE =
   "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium border";
 
@@ -36,12 +44,51 @@ export default function ContactDetailPage() {
   const { phone: phoneParam } = useParams<{ phone: string }>();
   const phone = phoneParam ? decodeURIComponent(phoneParam) : "";
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const query = useQuery({
     queryKey: ["contact", phone],
     queryFn: () => fetchContactByPhone(phone),
     enabled: !!phone,
   });
+
+  const [displayName, setDisplayName] = useState("");
+  const [notes, setNotes] = useState("");
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    if (query.data && !hydrated) {
+      setDisplayName(query.data.display_name || "");
+      setNotes(query.data.lead?.notes || "");
+      setHydrated(true);
+    }
+  }, [query.data, hydrated]);
+
+  useEffect(() => {
+    setHydrated(false);
+  }, [phone]);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      updateContactNotes(phone, {
+        notes,
+        display_name: displayName.trim() || null,
+      }),
+    onSuccess: (data) => {
+      toast("success", "Notas guardadas");
+      queryClient.setQueryData(["contact", phone], data);
+      setDisplayName(data.display_name);
+      setNotes(data.lead?.notes || "");
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    },
+    onError: (err: Error) => toast("error", err.message),
+  });
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    mutation.mutate();
+  }
 
   if (query.isLoading) {
     return (
@@ -96,6 +143,39 @@ export default function ContactDetailPage() {
         </div>
       </div>
 
+      <form onSubmit={onSubmit} className={CARD + " p-5 space-y-4"}>
+        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+          <FileText size={14} className="text-amber-400" /> Notas del contacto
+        </h3>
+        <p className="text-xs text-zinc-500">
+          Nombre y notas visibles en la ficha. Se guardan en el lead (si no existe, se crea).
+        </p>
+        <label className="block space-y-1.5">
+          <span className="text-xs text-zinc-400">Nombre</span>
+          <input
+            className={INPUT}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            maxLength={200}
+            placeholder="Ej. María García"
+          />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs text-zinc-400">Notas</span>
+          <textarea
+            className={INPUT + " min-h-[120px] resize-y"}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={5000}
+            placeholder="Preferencias, alergias, historial breve…"
+          />
+        </label>
+        <button type="submit" disabled={mutation.isPending} className={BTN}>
+          {mutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+          Guardar notas
+        </button>
+      </form>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <section className={CARD + " p-5 space-y-3"}>
           <h3 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -107,7 +187,6 @@ export default function ContactDetailPage() {
                 {c.lead.status}
               </span>
               <p className="text-zinc-400">Score: {c.lead.score}</p>
-              {c.lead.notes && <p className="text-zinc-500 text-xs whitespace-pre-wrap">{c.lead.notes}</p>}
               <button
                 type="button"
                 className={BTN2 + " w-full mt-2"}
@@ -117,7 +196,7 @@ export default function ContactDetailPage() {
               </button>
             </div>
           ) : (
-            <p className="text-xs text-zinc-600">Sin lead en embudo.</p>
+            <p className="text-xs text-zinc-600">Sin lead en embudo (al guardar notas se crea).</p>
           )}
         </section>
 

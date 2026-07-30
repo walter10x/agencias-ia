@@ -628,3 +628,10 @@ class ContactDetailResponse(BaseModel):
     conversations: list[ContactConversationSnippetResponse] = []
     appointments: list[ContactAppointmentSnippetResponse] = []
     last_activity_at: str | None = None
+
+
+class ContactNotesUpdateRequest(BaseModel):
+    notes: str = Field("", max_length=5000, description="Notas libres del contacto")
+    display_name: str | None = Field(
+        None, max_length=200, description="Nombre visible (opcional)"
+    )

@@ -36,6 +36,10 @@ class FakeLeadRepo:
         self.items: list[Lead] = []
 
     async def save(self, lead: Lead) -> None:
+        for idx, item in enumerate(self.items):
+            if item.id == lead.id:
+                self.items[idx] = lead
+                return
         self.items.append(lead)
 
     async def find_by_id(self, lead_id: str):

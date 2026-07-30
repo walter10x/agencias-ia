@@ -1,8 +1,8 @@
-"""HTTP Router: Contactos CRM-1 (agregación solo lectura)."""
+"""HTTP Router: Contactos CRM (agregación + notas)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.contact.get_contact import (
     GetContactInput,
@@ -10,7 +10,12 @@ from app.application.contact.get_contact import (
     ListContactsInput,
     ListContactsUseCase,
 )
+from app.application.contact.update_contact_notes import (
+    UpdateContactNotesInput,
+    UpdateContactNotesUseCase,
+)
 from app.application.dtos import CurrentClientOutput
+from app.domain.shared.errors import InvalidLeadError
 from app.infrastructure.http.dependencies import (
     get_appointment_repo,
     get_conversation_repo,
@@ -23,6 +28,7 @@ from app.infrastructure.http.schemas import (
     ContactDetailResponse,
     ContactLeadSnippetResponse,
     ContactListResponse,
+    ContactNotesUpdateRequest,
     ContactSummaryResponse,
 )
 from app.infrastructure.persistence.appointment_repository import SupabaseAppointmentRepository
@@ -112,4 +118,31 @@ async def get_contact_by_phone(
     detail = await uc.execute(
         GetContactInput(client_id=current_client.client_id, phone=phone)
     )
+    return _detail_to_response(detail)
+
+
+@router.patch("/by-phone/{phone}/notes", response_model=ContactDetailResponse)
+async def update_contact_notes(
+    phone: str,
+    body: ContactNotesUpdateRequest,
+    current_client: CurrentClientOutput = Depends(get_current_client),
+    lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
+    conversation_repo: SupabaseConversationRepository = Depends(get_conversation_repo),
+    appointment_repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
+):
+    get_uc = GetContactUseCase(lead_repo, conversation_repo, appointment_repo)
+    uc = UpdateContactNotesUseCase(lead_repo, get_uc)
+    try:
+        detail = await uc.execute(
+            UpdateContactNotesInput(
+                client_id=current_client.client_id,
+                phone=phone,
+                notes=body.notes,
+                display_name=body.display_name,
+            )
+        )
+    except InvalidLeadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
     return _detail_to_response(detail)

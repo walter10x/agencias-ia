@@ -42,3 +42,16 @@ export function fetchContacts(limit = 50, offset = 0): Promise<ContactListData> 
 export function fetchContactByPhone(phone: string): Promise<ContactDetail> {
   return apiFetch<ContactDetail>(`/contacts/by-phone/${encodeURIComponent(phone)}`);
 }
+
+export function updateContactNotes(
+  phone: string,
+  data: { notes: string; display_name?: string | null },
+): Promise<ContactDetail> {
+  return apiFetch<ContactDetail>(
+    `/contacts/by-phone/${encodeURIComponent(phone)}/notes`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    },
+  );
+}
