@@ -1,12 +1,17 @@
 # Plan MVP — agencias-ia
 
-**Decisiones tomadas (2026-07-05):** canal WhatsApp = Meta Cloud API · agenda propia en Postgres (sync Google Calendar en fase 2 post-MVP) · ejecución por el equipo.
+> **Estado operativo actual (2026-07-30):** ver `CONFIGURACION-ECOSISTEMA-COMPLETO.md` (§5 / §5.1 / §10).  
+> Este archivo es el **plan técnico histórico** por fases. Gran parte ya está hecha en prod (YCloud, agenda Orinoco, panel onboarding). Lo que queda fuera de código: 2º número WA (paso 24) + APPROVED Meta plantilla (paso 21) + hardening secretos.
+
+**Decisiones tomadas:** canal WhatsApp prod = **YCloud Coexistence** (Meta Cloud API como adaptador legacy) · agenda propia en Postgres · ejecución por el equipo.
 
 ## Definición de MVP funcional
 
 Un cliente (negocio) puede: conectar su número de WhatsApp Business, tener un agente IA que responde a sus clientes finales con memoria de conversación, que consulta disponibilidad y agenda/cancela citas, envía recordatorios automáticos, y todo visible desde el panel. Multi-tenant, desplegado en Dokploy, sin secretos versionados.
 
 **Criterio de aceptación global (demo de venta):** mensaje real de WhatsApp → respuesta del bot en <15s → cita agendada visible en panel → recordatorio recibido → conversación completa consultable en el dashboard.
+
+**Orinoco (tenant #1):** criterio cumplido salvo recordatorio HSM (plantilla pendiente de Meta).
 
 ---
 

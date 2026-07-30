@@ -1,8 +1,8 @@
 # Guía de Conexión con Clientes — Plataforma Agencias-IA
 
-> **Documento ÚNICO y DECISIVO** del proyecto.
-> Cualquier otro `.md` de planificación que no sea este está obsoleto.
-> **Reglas**: arquitectura hexagonal · TDD · archivos <500 líneas · funciones pequeñas · cero `Any`.
+> **OBSOLETO como fuente de verdad (2026-07-30).**  
+> Usar **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** para estado, YCloud, Orinoco y onboarding.  
+> Este archivo se conserva solo como histórico de decisiones tempranas de auth/UI.
 
 ---
 

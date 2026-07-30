@@ -2,8 +2,13 @@
 
 Documento de referencia: modelo de negocio, roles de cada pieza y **orden correcto** de trabajo.
 
-Última actualización: 2026-07-29  
-Estado: Local E2E YCloud OK · Dominio prod `agencias.orinocostudios.org` (DNS OK → 212.47.65.44) · dominio Dokploy creado · falta commit/push + redeploy.
+**Última actualización:** 2026-07-30  
+**Estado prod:** ✅ Vivo en `https://agencias.orinocostudios.org` (Dokploy compose `agencias-ia-stack`) · canal **YCloud Coexistence** · bot Orinoco agenda demos · panel onboarding listo (aprobar / horario / connect WA).
+
+**Bloqueadores externos (no código):**
+1. **2º número WhatsApp** → Paso 24 (otro tenant).
+2. **Meta APPROVED** de plantilla `appointment_reminder_2` → Paso 21 (recordatorios HSM).
+3. Hardening/rotación de secretos → aplazado (§5.1 bloque D).
 
 ---
 
@@ -144,21 +149,11 @@ Flujo típico:
 
 | # | Paso | Estado |
 |---|------|--------|
-| 8 | Deploy / entorno vivo (Dokploy o local): backend + Redis + Celery + BD | ✅ Local OK (2026-07-28) — Dokploy sigue en error / sin dominio real |
-| 9 | Migraciones aplicadas + variables de entorno (LLM key, DB, etc.) | ✅ Local: init.sql 001–005 + `.env` PostgREST/Postgres |
-| 10 | Confirmar pipeline WhatsApp → Celery → LLM → respuesta | ⏳ Tras Fase C (adaptador YCloud) |
+| 8 | Deploy / entorno vivo (Dokploy o local): backend + Redis + Celery + BD | ✅ Local OK · **Prod OK** (`agencias.orinocostudios.org`) |
+| 9 | Migraciones aplicadas + variables de entorno (LLM key, DB, etc.) | ✅ Prod + local |
+| 10 | Confirmar pipeline WhatsApp → Celery → LLM → respuesta | ✅ Prod E2E Orinoco |
 
-**Hallazgos 2026-07-28 (Dokploy):**
-
-| Item | Estado |
-|------|--------|
-| Proyecto Dokploy `agencias-ia` | Existe |
-| Compose `agencias-ia-stack` | Status **error** (último deploy fallido tras merge `develop` 2026-07-06) |
-| Dominios Traefik | Ninguno real (`APP_DOMAIN=agencias.dominio.com` placeholder) |
-| LLM en env Dokploy | Gateway `ollama.orinocostudios.dev` configurado |
-| Canal actual en código/prod env | Meta Cloud API (aún **no** YCloud) |
-
-**Decisión de ruta:** primero **local con Docker Compose** para validar el stack; Dokploy + dominio real después (necesario para webhook público de YCloud).
+**Histórico Dokploy (2026-07-28, ya resuelto):** hubo un compose en error y dominio placeholder; hoy el stack está desplegado con dominio real y webhook YCloud activo.
 
 ### Fase C — Puente YCloud ↔ App
 
@@ -167,32 +162,32 @@ Flujo típico:
 | 11 | Adaptar **webhook** para payload YCloud | ✅ `POST /webhook/ycloud` |
 | 12 | Adaptar **sender** para responder vía API YCloud | ✅ `YCloudWhatsAppSender` + `WHATSAPP_PROVIDER=ycloud` |
 | 13 | Verificar HMAC / secret del webhook | ✅ (si `YCLOUD_WEBHOOK_SECRET` vacío → solo warning en local) |
-| 14 | Probar: mensaje → API → 200 / queued | ✅ Local E2E **sent** vía YCloud (`sendDirectly` 200) — 2026-07-29 |
+| 14 | Probar: mensaje → API → 200 / queued | ✅ Local + **prod** WhatsApp real |
 
 ### Fase D — Bot Orinoco (primer tenant)
 
-| # | Paso |
-|---|------|
-| 15 | Crear cliente/tenant **Orinoco Studios** en el panel |
-| 16 | Guardar credenciales YCloud de ese número en el tenant |
-| 17 | Configurar **agente**: prompt Orinoco (servicios, tono, calificación, agenda demo) |
-| 18 | Conectar **LLM** (API key / endpoint en servidor) |
-| 19 | Prueba E2E: WhatsApp → bot responde solo en &lt;15s → visible en panel |
+| # | Paso | Estado |
+|---|------|--------|
+| 15 | Crear cliente/tenant **Orinoco Studios** en el panel / BD | ✅ Tenant #1 |
+| 16 | Guardar credenciales YCloud de ese número en el tenant | ✅ `phone_number_id=+34682743315` |
+| 17 | Configurar **agente**: prompt Orinoco (servicios, tono, calificación, agenda demo) | ✅ + tools nativas agenda |
+| 18 | Conectar **LLM** (API key / endpoint en servidor) | ✅ OpenCode Go / `deepseek-v4-flash` en prod |
+| 19 | Prueba E2E: WhatsApp → bot responde solo → visible en panel | ✅ 2026-07-29 |
 
 ### Fase E — Producto (agenda + operación)
 
 | # | Paso | Estado |
 |---|------|--------|
-| 20 | Agenda / demos funcionando para Orinoco | ✅ Hecho (2026-07-29) — WhatsApp real OK |
+| 20 | Agenda / demos funcionando para Orinoco | ✅ WhatsApp real OK |
 | 21 | Plantillas Meta (recordatorios) vía YCloud si hace falta | 🔄 Cableado (`appointment_reminder_2`); esperando APPROVED de Meta |
-| 22 | Inbox YCloud solo como **backup humano** | ✅ Hecho — playbook §5.3 + prompt handoff en prod |
+| 22 | Inbox YCloud solo como **backup humano** | ✅ Playbook §5.3 + prompt handoff en prod |
 
 ### Fase F — Extras
 
 | # | Paso | Estado |
 |---|------|--------|
-| 23 | Aviso al equipo al agendar demo (WhatsApp interno; n8n/CRM opcional luego) | ✅ Hecho (código + `TEAM_NOTIFY_WHATSAPP`; deploy OK) |
-| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | 🔄 Panel completo (aprobar/horario/WA); falta 2º número WhatsApp real |
+| 23 | Aviso al equipo al agendar demo (WhatsApp interno; n8n/CRM opcional luego) | ✅ `TEAM_NOTIFY_WHATSAPP` |
+| 24 | Onboarding para **otros clientes** (mismo flujo, otro tenant) | 🔄 **Panel listo** (§5.5); falta 2º número WhatsApp real |
 
 ---
 
@@ -232,7 +227,29 @@ Flujo típico:
 
 ### Mientras no haya 2º número
 
-No crear un tenant “falso” con el `+34682743315` de Orinoco: rompería el enrutado. Preparar datos del cliente (nombre, rubro, prompt, horario) y el número; al llegar el número, ejecutar el script en minutos.
+No crear un tenant “falso” con el `+34682743315` de Orinoco: rompería el enrutado. Preparar datos del cliente (nombre, rubro, prompt, horario) y el número; al llegar el número, onboarding por **panel** (§5.5) en minutos (SQL solo si preferís bulk).
+
+---
+
+## 5.5 Panel — onboarding de tenant (listo 2026-07-30)
+
+Todo desde el panel (rol **superadmin**), sin SQL obligatorio:
+
+| Acción | Dónde | API |
+|--------|-------|-----|
+| Registro pendiente | Lista clientes (badge **Pendiente**) | `POST /auth/register` |
+| Aprobar / Rechazar | Detalle cliente | `POST /clients/{id}/approve` · `/reject` |
+| Horario de negocio | Pestaña **Agencia** → editor días/horas/timezone/duración | `GET`/`PATCH /clients/{id}/schedule` |
+| Conectar WhatsApp | Pestaña **Agencia** → bloque WhatsApp | `POST /clients/{id}/connect-whatsapp` |
+| Desconectar WhatsApp | Mismo bloque | `POST /clients/{id}/disconnect-whatsapp` |
+| Crear agente + tools agenda | Pestaña Agencia → Nuevo Agente | `POST /clients/{id}/agents` |
+
+**Connect WhatsApp (YCloud Coexistence):**
+- `phone_number_id` = número **E.164** del negocio (ej. `+34600111222`), **no** el de Orinoco.
+- `access_token` = **API Key de YCloud** (se cifra en BD).
+- El cliente debe estar **aprobado/activo** antes de conectar.
+
+**Flujo recomendado 2º cliente:** YCloud Coexistence del número nuevo → `/register` o crear cliente → Aprobar → Horario → Conectar WA → Agente (tools `consultar_disponibilidad`, `agendar_cita`, `cancelar_cita`) → smoke WhatsApp.
 
 ---
 
@@ -316,30 +333,33 @@ El mensaje llega a la API (bot) **y** a la app Business. Si el lead escribe otra
 
 ### En YCloud
 
-- [x] Número Coexistence Connected  
-- [x] Prueba recepción Inbox  
-- [x] API Key creada (`agencia-ia-orinoco-api-ke`) — rotar si se filtró; guardar solo en secretos  
-- [x] Docs envío + webhook anotadas (§8.1)  
-- [x] Probar envío API (`sendDirectly`) a un número que nos escribió  
-- [x] Webhook → URL pública de nuestra API  
-- [x] Eventos suscritos: `whatsapp.inbound_message.received` (+ updated según dashboard)  
-- [ ] Plantillas (demo reminder, follow-up) cuando hagan falta  
-- [x] Inbox como backup humano (playbook §5.3) 
+- [x] Número Coexistence Connected (`+34682743315`)
+- [x] Prueba recepción Inbox
+- [x] API Key creada (`agencia-ia-orinoco-api-ke`) — rotar si se filtró; guardar solo en secretos
+- [x] Docs envío + webhook anotadas (§8.1)
+- [x] Probar envío API (`sendDirectly`)
+- [x] Webhook → `https://agencias.orinocostudios.org/webhook/ycloud`
+- [x] Eventos: `whatsapp.inbound_message.received` (+ updated)
+- [ ] Plantilla `appointment_reminder_2` **APPROVED** por Meta (paso 21)
+- [x] Inbox como backup humano (playbook §5.3)
+- [ ] 2º número Coexistence (paso 24)
 
 ### En Agencia IA (esta app)
 
-- [ ] Tenant Orinoco  
-- [ ] Adaptador recibir/enviar vía YCloud  
-- [ ] Agente + prompt Orinoco  
-- [ ] LLM configurado  
-- [ ] Panel: conversaciones, citas, conectar WhatsApp  
-- [ ] Onboarding multi-cliente  
+- [x] Tenant Orinoco + agente + agenda E2E
+- [x] Adaptador recibir/enviar vía YCloud
+- [x] LLM configurado en prod
+- [x] Panel: conversaciones, citas
+- [x] Panel: aprobar/rechazar registros
+- [x] Panel: horario de negocio
+- [x] Panel: conectar / desconectar WhatsApp
+- [ ] Onboarding 2º cliente real (bloqueado por número)
 
-### En n8n (después)
+### En n8n (después / opcional)
 
-- [ ] Lead calificado → CRM / email  
-- [ ] Cita creada → aviso interno  
+- [ ] Lead calificado → CRM / email
 - [ ] Extras custom por cliente  
+  (aviso de cita al equipo ya va nativo con `TEAM_NOTIFY_WHATSAPP`)
 
 ---
 
@@ -361,7 +381,7 @@ El mensaje llega a la API (bot) **y** a la app Business. Si el lead escribe otra
 | Número negocio (from) | `+34682743315` |
 | WABA ID | `10509904038849970` (visto en YCloud WhatsApp accounts) |
 | Integración | YCloud · Coexistence |
-| Estado (2026-07-28) | Connected · Inbox OK · API Key creada |
+| Estado (2026-07-30) | Connected · Inbox OK · webhook prod activo · bot agenda demos |
 | Negocio Meta | Verificado (WhatsApp Manager) |
 | API Key (nombre) | `agencia-ia-orinoco-api-ke` |
 
@@ -396,7 +416,7 @@ Ejemplo texto (ventana 24h):
 
 `from` / `to` en formato **E.164** (con `+`).
 
-#### Webhook (cuando haya URL pública de Agencia IA)
+#### Webhook (prod)
 
 Eventos a suscribir:
 
@@ -411,13 +431,13 @@ Responder **200** rápido (&lt; ~6s); procesar async (Celery).
 
 Payload inbound (resumen): `event.type` + `whatsappInboundMessage` con `from`, `to`, `type`, `text.body`, `wabaId`, etc.
 
-Routing multi-tenant: resolver tenant por **`to`** (nuestro número E.164) y/o `wabaId`.
+Routing multi-tenant: resolver tenant por **`to`** (nuestro número E.164) guardado en `clients.phone_number_id`.
 
-#### Crear webhook en el dashboard (Fase C)
+#### Webhook en el dashboard
 
-YCloud → Developers → Webhooks → crear endpoint con URL  
-`https://<nuestra-api>/webhook/ycloud` (o la ruta que definamos)  
-+ secret + eventos de arriba.
+YCloud → Developers → Webhooks →  
+`https://agencias.orinocostudios.org/webhook/ycloud`  
++ secret + eventos de arriba. **Ya activo en prod.**
 
 ---
 
@@ -430,54 +450,60 @@ YCloud → Developers → Webhooks → crear endpoint con URL
 
 Si una key se pega en chat o se sube al repo → **revocar/rotar** en YCloud y crear una nueva.
 
-Variables sugeridas (cuando conectemos la app):
+Variables en prod (Dokploy; no pegar valores aquí):
 
 ```env
+WHATSAPP_PROVIDER=ycloud
 YCLOUD_API_KEY=...
 YCLOUD_WEBHOOK_SECRET=...
 YCLOUD_FROM_NUMBER=+34682743315
+TEAM_NOTIFY_WHATSAPP=+34...
+WHATSAPP_REMINDER_TEMPLATE_NAME=appointment_reminder_2
+WHATSAPP_REMINDER_TEMPLATE_LANGUAGE=es
+CREDENTIALS_ENCRYPTION_KEY=...
 ```
 
 ---
 
-## 10. Siguiente acción inmediata
+## 10. Estado actual y siguientes acciones (2026-07-30)
 
-**Fase B local ✅ · Fase C código ✅.** Stack arriba:
+### Prod (referencias)
+
+| Servicio | URL |
+|----------|-----|
+| Panel / API | https://agencias.orinocostudios.org |
+| Webhook YCloud | `POST https://agencias.orinocostudios.org/webhook/ycloud` |
+| Docs API (si expuestas) | `/docs` detrás del mismo host |
+
+### Local (desarrollo)
 
 | Servicio | URL / puerto |
 |----------|----------------|
 | API docs | http://localhost:8000/docs |
 | Panel | http://localhost:5051 |
 | Webhook YCloud | `POST http://localhost:8000/webhook/ycloud` |
-| Webhook Meta | `GET/POST /webhook/whatsapp` (intacto) |
 
-### Pendiente para que el bot **responda por WhatsApp**
+### Qué está hecho
 
-1. En `backend-core/.env` pon tu key:
+- Orinoco: WhatsApp → bot → agenda demos → panel → aviso equipo.
+- Inbox humano como backup (§5.3).
+- Panel onboarding: aprobar, horario, connect/disconnect WhatsApp (§5.5).
+- Código recordatorios HSM cableado a `appointment_reminder_2`.
 
-```env
-WHATSAPP_PROVIDER=ycloud
-YCLOUD_FROM_NUMBER=+34682743315
-YCLOUD_API_KEY=pega_tu_key_aqui
-```
+### Qué falta (solo externo / opcional)
 
-2. Recrea workers:
+1. **Paso 24:** conseguir 2º número → Coexistence YCloud → panel §5.5 → smoke.
+2. **Paso 21:** esperar APPROVED Meta de la plantilla.
+3. **Hardening:** rotar secretos que hayan circulado en chat (aplazado).
+4. n8n/CRM: cuando haga falta, no bloquea venta del MVP.
 
-```powershell
-docker compose up -d --force-recreate backend celery-worker celery-beat
-```
+### Documentos relacionados
 
-3. Reprueba el webhook simulado (debe acabar en `send_status=sent`).
-
-### Ya validado en local
-
-- Webhook → `queued`
-- Celery + LLM Orinoco → genera respuesta
-- Envío → `skipped` (falta `YCLOUD_API_KEY`)
-- Tests: **63 passed** (YCloud + Meta sender + notifier + reminders + tasks)
-- Tenant sembrado: Orinoco + agente activo (`phone_number_id=+34682743315`)
-
-### Después (webhook real desde YCloud)
-
-URL HTTPS pública (Dokploy/dominio o ngrok) → YCloud Developers → Webhooks → `https://…/webhook/ycloud`.
+| Doc | Rol |
+|-----|-----|
+| **Este archivo** | Fuente de verdad del ecosistema YCloud + roadmap operativo |
+| `PLAN-MVP.md` | Plan técnico histórico por fases (código); ver estado en §5 aquí |
+| `README.md` | Entrada al repo |
+| `scripts/onboard-tenant-template.sql` | Alternativa SQL al panel |
+| `SECURITY-TODO.md` | Rotación de credenciales |
 
