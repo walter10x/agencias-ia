@@ -27,6 +27,8 @@ interface AppointmentFormProps {
   /** Si viene una cita, el formulario funciona en modo reprogramar. */
   appointment?: AppointmentData;
   onSuccess?: () => void;
+  /** Superadmin: tenant sobre el que crear/reprogramar */
+  clientId?: string | null;
 }
 
 interface FormErrors {
@@ -39,6 +41,7 @@ export default function AppointmentForm({
   onClose,
   appointment,
   onSuccess,
+  clientId,
 }: AppointmentFormProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -55,8 +58,8 @@ export default function AppointmentForm({
   const [apiError, setApiError] = useState("");
 
   const availabilityQuery = useQuery({
-    queryKey: ["availability", date],
-    queryFn: () => fetchAvailability(date),
+    queryKey: ["availability", date, clientId],
+    queryFn: () => fetchAvailability(date, clientId),
     enabled: isOpen && !!date,
     staleTime: 0,
   });
@@ -64,17 +67,24 @@ export default function AppointmentForm({
   const mutation = useMutation({
     mutationFn: () =>
       isReschedule
-        ? rescheduleAppointment(appointment!.id, {
-            starts_at: selectedSlot!.starts_at,
-            ends_at: selectedSlot!.ends_at,
-          })
-        : createAppointment({
-            starts_at: selectedSlot!.starts_at,
-            ends_at: selectedSlot!.ends_at,
-            contact_phone: contactPhone.trim(),
-            contact_name: contactName.trim(),
-            notes: notes.trim(),
-          }),
+        ? rescheduleAppointment(
+            appointment!.id,
+            {
+              starts_at: selectedSlot!.starts_at,
+              ends_at: selectedSlot!.ends_at,
+            },
+            clientId,
+          )
+        : createAppointment(
+            {
+              starts_at: selectedSlot!.starts_at,
+              ends_at: selectedSlot!.ends_at,
+              contact_phone: contactPhone.trim(),
+              contact_name: contactName.trim(),
+              notes: notes.trim(),
+            },
+            clientId,
+          ),
     onSuccess: () => {
       toast("success", isReschedule ? "Cita reprogramada" : "Cita creada");
       queryClient.invalidateQueries({ queryKey: ["appointments"] });

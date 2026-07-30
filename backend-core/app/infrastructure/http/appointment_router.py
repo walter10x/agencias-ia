@@ -1,13 +1,12 @@
 """HTTP Router: Appointment endpoints (agenda del negocio).
 
-Todos los endpoints están scoped por tenant: el client_id sale del JWT
-(get_current_client), nunca del body/query, de modo que un cliente no
-puede ver ni tocar citas de otro.
+Scoped por tenant. client_admin: siempre JWT. superadmin: puede pasar
+``client_id`` en query para listar / operar sobre otro negocio.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.appointment.cancel_appointment import CancelAppointmentUseCase
 from app.application.appointment.create_appointment import CreateAppointmentUseCase
@@ -23,6 +22,10 @@ from app.application.dtos import (
     GetAvailabilityInput,
     ListAppointmentsInput,
     RescheduleAppointmentInput,
+)
+from app.application.shared.tenant_scope import (
+    TenantScopeError,
+    resolve_list_client_id,
 )
 from app.infrastructure.http.dependencies import (
     get_appointment_repo,
@@ -47,20 +50,35 @@ from app.infrastructure.persistence.lead_repository import SupabaseLeadRepositor
 router = APIRouter()
 
 
+def _resolve_tenant(
+    current: CurrentClientOutput, requested: str | None
+) -> str:
+    try:
+        return resolve_list_client_id(current.role, current.client_id, requested)
+    except TenantScopeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+
+
 # E1: POST / — create appointment
 @router.post("", response_model=AppointmentResponse, status_code=201)
 async def create_appointment(
     body: AppointmentCreateRequest,
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
     client_repo: SupabaseClientRepository = Depends(get_client_repo),
     lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     uc = CreateAppointmentUseCase(
         repo=repo, schedule_repo=client_repo, lead_repo=lead_repo
     )
     dto = CreateAppointmentInput(
-        client_id=current_client.client_id,
+        client_id=tenant,
         starts_at=body.starts_at,
         ends_at=body.ends_at,
         contact_phone=body.contact_phone,
@@ -76,6 +94,9 @@ async def create_appointment(
 @router.get("", response_model=AppointmentListResponse)
 async def list_appointments(
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     date_from: str | None = Query(None, description="Desde (YYYY-MM-DD o ISO datetime)"),
     date_to: str | None = Query(None, description="Hasta (YYYY-MM-DD o ISO datetime)"),
     status: str | None = Query(None, description="Filter by status"),
@@ -84,9 +105,10 @@ async def list_appointments(
     repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
     client_repo: SupabaseClientRepository = Depends(get_client_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     uc = ListAppointmentsUseCase(repo=repo, schedule_repo=client_repo)
     dto = ListAppointmentsInput(
-        client_id=current_client.client_id,
+        client_id=tenant,
         date_from=date_from,
         date_to=date_to,
         status=status,
@@ -108,11 +130,15 @@ async def list_appointments(
 async def get_availability(
     date: str = Query(..., description="Día a consultar (YYYY-MM-DD)"),
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
     client_repo: SupabaseClientRepository = Depends(get_client_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     uc = GetAvailabilityUseCase(repo=repo, schedule_repo=client_repo)
-    dto = GetAvailabilityInput(client_id=current_client.client_id, date=date)
+    dto = GetAvailabilityInput(client_id=tenant, date=date)
     output = await uc.execute(dto)
     return AvailabilityResponse(
         date=output.date,
@@ -133,12 +159,16 @@ async def reschedule_appointment(
     appointment_id: str,
     body: AppointmentRescheduleRequest,
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
     client_repo: SupabaseClientRepository = Depends(get_client_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     uc = RescheduleAppointmentUseCase(repo=repo, schedule_repo=client_repo)
     dto = RescheduleAppointmentInput(
-        client_id=current_client.client_id,
+        client_id=tenant,
         appointment_id=appointment_id,
         new_starts_at=body.starts_at,
         new_ends_at=body.ends_at,
@@ -152,11 +182,15 @@ async def reschedule_appointment(
 async def cancel_appointment(
     appointment_id: str,
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     uc = CancelAppointmentUseCase(repo=repo)
     dto = CancelAppointmentInput(
-        client_id=current_client.client_id,
+        client_id=tenant,
         appointment_id=appointment_id,
     )
     output = await uc.execute(dto)

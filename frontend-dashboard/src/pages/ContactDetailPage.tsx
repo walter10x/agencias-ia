@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -44,13 +44,15 @@ function formatWhen(iso: string | null | undefined) {
 export default function ContactDetailPage() {
   const { phone: phoneParam } = useParams<{ phone: string }>();
   const phone = phoneParam ? decodeURIComponent(phoneParam) : "";
+  const [searchParams] = useSearchParams();
+  const tenantClientId = searchParams.get("client_id");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const query = useQuery({
-    queryKey: ["contact", phone],
-    queryFn: () => fetchContactByPhone(phone),
+    queryKey: ["contact", phone, tenantClientId],
+    queryFn: () => fetchContactByPhone(phone, tenantClientId),
     enabled: !!phone,
   });
 
@@ -68,17 +70,21 @@ export default function ContactDetailPage() {
 
   useEffect(() => {
     setHydrated(false);
-  }, [phone]);
+  }, [phone, tenantClientId]);
 
   const mutation = useMutation({
     mutationFn: () =>
-      updateContactNotes(phone, {
-        notes,
-        display_name: displayName.trim() || null,
-      }),
+      updateContactNotes(
+        phone,
+        {
+          notes,
+          display_name: displayName.trim() || null,
+        },
+        tenantClientId,
+      ),
     onSuccess: (data) => {
       toast("success", "Notas guardadas");
-      queryClient.setQueryData(["contact", phone], data);
+      queryClient.setQueryData(["contact", phone, tenantClientId], data);
       setDisplayName(data.display_name);
       setNotes(data.lead?.notes || "");
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
@@ -87,10 +93,10 @@ export default function ContactDetailPage() {
   });
 
   const markMutation = useMutation({
-    mutationFn: () => markContactContacted(phone),
+    mutationFn: () => markContactContacted(phone, tenantClientId),
     onSuccess: (data) => {
       toast("success", "Marcado como contactado");
-      queryClient.setQueryData(["contact", phone], data);
+      queryClient.setQueryData(["contact", phone, tenantClientId], data);
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
     },
     onError: (err: Error) => toast("error", err.message),

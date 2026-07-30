@@ -20,6 +20,7 @@ import {
   type AppointmentFilters,
 } from "@/api/appointment";
 import AppointmentForm from "@/components/AppointmentForm";
+import TenantSelect, { useTenantClientId } from "@/components/TenantSelect";
 import { useToast } from "@/components/Toast";
 
 // ---------- helpers de fecha ----------
@@ -78,6 +79,7 @@ const STATUS_FILTERS = ["", "pending", "confirmed", "completed", "cancelled"] as
 export default function AppointmentsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isSuperadmin, clientId, setClientId, ready } = useTenantClientId();
 
   const [view, setView] = useState<ViewMode>("list");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -94,16 +96,29 @@ export default function AppointmentsPage() {
           dateTo: ymd(addDays(weekAnchor, 7)),
           status: statusFilter || undefined,
           limit: 200,
+          clientId: isSuperadmin ? clientId : undefined,
         }
-      : { status: statusFilter || undefined, limit: 100 };
+      : {
+          status: statusFilter || undefined,
+          limit: 100,
+          clientId: isSuperadmin ? clientId : undefined,
+        };
 
   const appointmentsQuery = useQuery({
-    queryKey: ["appointments", view, statusFilter, view === "week" ? ymd(weekAnchor) : "list"],
+    queryKey: [
+      "appointments",
+      view,
+      statusFilter,
+      view === "week" ? ymd(weekAnchor) : "list",
+      clientId,
+    ],
     queryFn: () => fetchAppointments(filters),
+    enabled: ready,
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id: string) => cancelAppointment(id),
+    mutationFn: (id: string) =>
+      cancelAppointment(id, isSuperadmin ? clientId : undefined),
     onSuccess: () => {
       toast("success", "Cita cancelada");
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -131,19 +146,28 @@ export default function AppointmentsPage() {
       <div className="relative z-10 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-white">Agenda</h2>
-          <p className="text-sm text-zinc-500 mt-1">Citas de tu negocio</p>
+          <p className="text-sm text-zinc-500 mt-1">
+            Citas del negocio (superadmin: elige el tenant abajo)
+          </p>
         </div>
         <button
           onClick={() => {
             setRescheduleTarget(null);
             setFormOpen(true);
           }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
+          disabled={!ready}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           <Plus size={16} />
           Nueva cita
         </button>
       </div>
+
+      {isSuperadmin && (
+        <div className="relative z-10">
+          <TenantSelect value={clientId} onChange={setClientId} />
+        </div>
+      )}
 
       {/* Controls */}
       <div className="relative z-10 flex items-center justify-between flex-wrap gap-3">
@@ -350,6 +374,7 @@ export default function AppointmentsPage() {
           setRescheduleTarget(null);
         }}
         appointment={rescheduleTarget ?? undefined}
+        clientId={isSuperadmin ? clientId : undefined}
       />
 
       {/* Cancel confirmation */}

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ContactRound, MessageSquare, Phone, Search } from "lucide-react";
 import { fetchContacts } from "@/api/contact";
+import TenantSelect, { useTenantClientId } from "@/components/TenantSelect";
 
 const CARD =
   "bg-zinc-900 border border-zinc-800 rounded-xl transition-all duration-300 ease-out hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20";
@@ -48,10 +49,13 @@ function formatWhen(iso: string | null) {
 export default function ContactsPage() {
   const navigate = useNavigate();
   const [inactiveDays, setInactiveDays] = useState<number | null>(null);
+  const { isSuperadmin, clientId, setClientId, ready } = useTenantClientId();
 
   const query = useQuery({
-    queryKey: ["contacts", inactiveDays],
-    queryFn: () => fetchContacts(100, 0, inactiveDays),
+    queryKey: ["contacts", inactiveDays, clientId],
+    queryFn: () =>
+      fetchContacts(100, 0, inactiveDays, isSuperadmin ? clientId : undefined),
+    enabled: ready,
   });
 
   const items = query.data?.items ?? [];
@@ -64,6 +68,10 @@ export default function ContactsPage() {
           Personas que escriben o agendan (no confundir con Clientes = negocios).
         </p>
       </div>
+
+      {isSuperadmin && (
+        <TenantSelect value={clientId} onChange={setClientId} />
+      )}
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => {
@@ -86,7 +94,14 @@ export default function ContactsPage() {
         })}
       </div>
 
-      {query.isLoading && (
+      {!ready && isSuperadmin && (
+        <div className={CARD + " flex flex-col items-center justify-center py-16 text-center"}>
+          <p className="text-white font-medium mb-1">Selecciona un negocio</p>
+          <p className="text-sm text-zinc-500">Para ver sus contactos</p>
+        </div>
+      )}
+
+      {ready && query.isLoading && (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className={CARD + " p-4"}>
@@ -97,7 +112,7 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {query.error && (
+      {ready && query.error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
           No se pudieron cargar los contactos.{" "}
           <button className="underline" onClick={() => query.refetch()}>
@@ -106,7 +121,7 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {!query.isLoading && !query.error && items.length === 0 && (
+      {ready && !query.isLoading && !query.error && items.length === 0 && (
         <div className={CARD + " flex flex-col items-center justify-center py-16 text-center"}>
           <ContactRound size={36} className="text-zinc-600 mb-4" />
           <p className="text-white font-medium mb-1">
@@ -120,13 +135,19 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {!query.isLoading && items.length > 0 && (
+      {ready && !query.isLoading && items.length > 0 && (
         <div className="space-y-2">
           {items.map((c) => (
             <button
               key={c.phone}
               type="button"
-              onClick={() => navigate(`/app/contacts/${encodeURIComponent(c.phone)}`)}
+              onClick={() => {
+                const q =
+                  isSuperadmin && clientId
+                    ? `?client_id=${encodeURIComponent(clientId)}`
+                    : "";
+                navigate(`/app/contacts/${encodeURIComponent(c.phone)}${q}`);
+              }}
               className={CARD + " w-full p-4 text-left cursor-pointer"}
             >
               <div className="flex items-center justify-between gap-3">
@@ -172,7 +193,7 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {!query.isLoading && items.length > 0 && (
+      {ready && !query.isLoading && items.length > 0 && (
         <p className="text-xs text-zinc-600 flex items-center gap-1">
           <Search size={12} /> {query.data?.total ?? items.length} contacto
           {(query.data?.total ?? items.length) === 1 ? "" : "s"}

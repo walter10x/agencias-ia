@@ -59,6 +59,12 @@ export interface AppointmentFilters {
   status?: string;
   limit?: number;
   offset?: number;
+  /** Superadmin: tenant a consultar */
+  clientId?: string | null;
+}
+
+function withClientId(params: URLSearchParams, clientId?: string | null) {
+  if (clientId) params.set("client_id", clientId);
 }
 
 export function fetchAppointments(
@@ -70,19 +76,25 @@ export function fetchAppointments(
   if (filters.status) params.set("status", filters.status);
   params.set("limit", String(filters.limit ?? 50));
   params.set("offset", String(filters.offset ?? 0));
+  withClientId(params, filters.clientId);
   return apiFetch<AppointmentListData>(`/appointments?${params.toString()}`);
 }
 
-export function fetchAvailability(date: string): Promise<AvailabilityData> {
-  return apiFetch<AvailabilityData>(
-    `/appointments/availability?date=${encodeURIComponent(date)}`,
-  );
+export function fetchAvailability(
+  date: string,
+  clientId?: string | null,
+): Promise<AvailabilityData> {
+  const params = new URLSearchParams({ date });
+  withClientId(params, clientId);
+  return apiFetch<AvailabilityData>(`/appointments/availability?${params.toString()}`);
 }
 
 export function createAppointment(
   data: AppointmentCreateInput,
+  clientId?: string | null,
 ): Promise<AppointmentData> {
-  return apiFetch<AppointmentData>("/appointments", {
+  const q = clientId ? `?client_id=${encodeURIComponent(clientId)}` : "";
+  return apiFetch<AppointmentData>(`/appointments${q}`, {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -91,15 +103,21 @@ export function createAppointment(
 export function rescheduleAppointment(
   id: string,
   data: AppointmentRescheduleInput,
+  clientId?: string | null,
 ): Promise<AppointmentData> {
-  return apiFetch<AppointmentData>(`/appointments/${id}`, {
+  const q = clientId ? `?client_id=${encodeURIComponent(clientId)}` : "";
+  return apiFetch<AppointmentData>(`/appointments/${id}${q}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
-export function cancelAppointment(id: string): Promise<AppointmentData> {
-  return apiFetch<AppointmentData>(`/appointments/${id}`, {
+export function cancelAppointment(
+  id: string,
+  clientId?: string | null,
+): Promise<AppointmentData> {
+  const q = clientId ? `?client_id=${encodeURIComponent(clientId)}` : "";
+  return apiFetch<AppointmentData>(`/appointments/${id}${q}`, {
     method: "DELETE",
   });
 }

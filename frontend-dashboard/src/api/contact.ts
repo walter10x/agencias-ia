@@ -36,10 +36,17 @@ export interface ContactDetail {
   last_activity_at: string | null;
 }
 
+function withClient(path: string, clientId?: string | null) {
+  if (!clientId) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}client_id=${encodeURIComponent(clientId)}`;
+}
+
 export function fetchContacts(
   limit = 50,
   offset = 0,
   inactiveDays?: number | null,
+  clientId?: string | null,
 ): Promise<ContactListData> {
   const params = new URLSearchParams({
     limit: String(limit),
@@ -48,19 +55,26 @@ export function fetchContacts(
   if (inactiveDays != null && inactiveDays > 0) {
     params.set("inactive_days", String(inactiveDays));
   }
+  if (clientId) params.set("client_id", clientId);
   return apiFetch<ContactListData>(`/contacts?${params.toString()}`);
 }
 
-export function fetchContactByPhone(phone: string): Promise<ContactDetail> {
-  return apiFetch<ContactDetail>(`/contacts/by-phone/${encodeURIComponent(phone)}`);
+export function fetchContactByPhone(
+  phone: string,
+  clientId?: string | null,
+): Promise<ContactDetail> {
+  return apiFetch<ContactDetail>(
+    withClient(`/contacts/by-phone/${encodeURIComponent(phone)}`, clientId),
+  );
 }
 
 export function updateContactNotes(
   phone: string,
   data: { notes: string; display_name?: string | null },
+  clientId?: string | null,
 ): Promise<ContactDetail> {
   return apiFetch<ContactDetail>(
-    `/contacts/by-phone/${encodeURIComponent(phone)}/notes`,
+    withClient(`/contacts/by-phone/${encodeURIComponent(phone)}/notes`, clientId),
     {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -68,9 +82,15 @@ export function updateContactNotes(
   );
 }
 
-export function markContactContacted(phone: string): Promise<ContactDetail> {
+export function markContactContacted(
+  phone: string,
+  clientId?: string | null,
+): Promise<ContactDetail> {
   return apiFetch<ContactDetail>(
-    `/contacts/by-phone/${encodeURIComponent(phone)}/mark-contacted`,
+    withClient(
+      `/contacts/by-phone/${encodeURIComponent(phone)}/mark-contacted`,
+      clientId,
+    ),
     { method: "POST" },
   );
 }

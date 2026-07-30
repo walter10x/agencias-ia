@@ -19,6 +19,10 @@ from app.application.contact.update_contact_notes import (
     UpdateContactNotesUseCase,
 )
 from app.application.dtos import CurrentClientOutput
+from app.application.shared.tenant_scope import (
+    TenantScopeError,
+    resolve_list_client_id,
+)
 from app.domain.shared.errors import InvalidLeadError
 from app.infrastructure.http.dependencies import (
     get_appointment_repo,
@@ -40,6 +44,17 @@ from app.infrastructure.persistence.conversation_repository import SupabaseConve
 from app.infrastructure.persistence.lead_repository import SupabaseLeadRepository
 
 router = APIRouter()
+
+
+def _resolve_tenant(
+    current: CurrentClientOutput, requested: str | None
+) -> str:
+    try:
+        return resolve_list_client_id(current.role, current.client_id, requested)
+    except TenantScopeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
 
 
 def _detail_to_response(detail) -> ContactDetailResponse:
@@ -80,6 +95,9 @@ def _detail_to_response(detail) -> ContactDetailResponse:
 @router.get("", response_model=ContactListResponse)
 async def list_contacts(
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     inactive_days: int | None = Query(
@@ -92,10 +110,11 @@ async def list_contacts(
     conversation_repo: SupabaseConversationRepository = Depends(get_conversation_repo),
     appointment_repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     uc = ListContactsUseCase(lead_repo, conversation_repo, appointment_repo)
     items, total = await uc.execute(
         ListContactsInput(
-            client_id=current_client.client_id,
+            client_id=tenant,
             limit=limit,
             offset=offset,
             inactive_days_min=inactive_days,
@@ -122,14 +141,16 @@ async def list_contacts(
 async def get_contact_by_phone(
     phone: str,
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
     conversation_repo: SupabaseConversationRepository = Depends(get_conversation_repo),
     appointment_repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     uc = GetContactUseCase(lead_repo, conversation_repo, appointment_repo)
-    detail = await uc.execute(
-        GetContactInput(client_id=current_client.client_id, phone=phone)
-    )
+    detail = await uc.execute(GetContactInput(client_id=tenant, phone=phone))
     return _detail_to_response(detail)
 
 
@@ -138,16 +159,20 @@ async def update_contact_notes(
     phone: str,
     body: ContactNotesUpdateRequest,
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
     conversation_repo: SupabaseConversationRepository = Depends(get_conversation_repo),
     appointment_repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
 ):
+    tenant = _resolve_tenant(current_client, client_id)
     get_uc = GetContactUseCase(lead_repo, conversation_repo, appointment_repo)
     uc = UpdateContactNotesUseCase(lead_repo, get_uc)
     try:
         detail = await uc.execute(
             UpdateContactNotesInput(
-                client_id=current_client.client_id,
+                client_id=tenant,
                 phone=phone,
                 notes=body.notes,
                 display_name=body.display_name,
@@ -164,17 +189,21 @@ async def update_contact_notes(
 async def mark_contact_contacted(
     phone: str,
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None, description="Tenant (superadmin); ignorado para client_admin"
+    ),
     lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
     conversation_repo: SupabaseConversationRepository = Depends(get_conversation_repo),
     appointment_repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
 ):
     """CRM-5: marca el contacto como contactado (reactivación operativa en panel)."""
+    tenant = _resolve_tenant(current_client, client_id)
     get_uc = GetContactUseCase(lead_repo, conversation_repo, appointment_repo)
     uc = MarkContactContactedUseCase(lead_repo, get_uc)
     try:
         detail = await uc.execute(
             MarkContactContactedInput(
-                client_id=current_client.client_id,
+                client_id=tenant,
                 phone=phone,
             )
         )
