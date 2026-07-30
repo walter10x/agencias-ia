@@ -11,6 +11,7 @@ visible desde un panel de control.
 | Documento | Para qué |
 |-----------|----------|
 | **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** | **Fuente de verdad operativa** — YCloud, Orinoco, roadmap, panel onboarding, prod |
+| **`PRODUCTO-CRM-CONTACTOS.md`** | Diseño CRM ligero (ficha contacto) — siguiente capa de producto |
 | `PLAN-MVP.md` | Plan técnico histórico por fases de código |
 | `SECURITY-TODO.md` | Rotación de credenciales |
 | `GUIA-DESPLIEGUE-DOKPLOY.md` | Detalle de deploy |

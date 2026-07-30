@@ -495,13 +495,15 @@ CREDENTIALS_ENCRYPTION_KEY=...
 1. **Paso 24:** conseguir 2º número → Coexistence YCloud → panel §5.5 → smoke.
 2. **Paso 21:** esperar APPROVED Meta de la plantilla.
 3. **Hardening:** rotar secretos que hayan circulado en chat (aplazado).
-4. n8n/CRM: cuando haga falta, no bloquea venta del MVP.
+4. n8n: solo extras CRM externos / Sheets; no bloquea MVP.
+5. **CRM ligero (ficha contacto):** diseño listo en `PRODUCTO-CRM-CONTACTOS.md` — implementación cuando arranquemos (CRM-1 lectura + panel).
 
 ### Documentos relacionados
 
 | Doc | Rol |
 |-----|-----|
 | **Este archivo** | Fuente de verdad del ecosistema YCloud + roadmap operativo |
+| **`PRODUCTO-CRM-CONTACTOS.md`** | Diseño CRM ligero (ficha unificada) — siguiente capa de producto |
 | `README.md` | Entrada al repo |
 | `PLAN-MVP.md` | Plan técnico histórico por fases; banner apunta aquí |
 | `SECURITY-TODO.md` | Rotación de credenciales (hardening aplazado) |
