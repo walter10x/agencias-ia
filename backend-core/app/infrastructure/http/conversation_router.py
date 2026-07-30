@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.application.conversation.get_conversation_messages import (
     GetConversationMessagesUseCase,
@@ -15,6 +15,10 @@ from app.application.dtos import (
     CurrentClientOutput,
     GetConversationMessagesInput,
     ListConversationsInput,
+)
+from app.application.shared.tenant_scope import (
+    TenantScopeError,
+    resolve_list_client_id,
 )
 from app.infrastructure.http.dependencies import get_conversation_repo, get_current_client
 from app.infrastructure.http.schemas import (
@@ -35,13 +39,25 @@ router = APIRouter()
 @router.get("", response_model=ConversationListResponse)
 async def list_conversations(
     current_client: CurrentClientOutput = Depends(get_current_client),
+    client_id: str | None = Query(
+        None,
+        description="Tenant a listar (obligatorio para superadmin; ignorado para client_admin)",
+    ),
     limit: int = Query(20, ge=1, le=200, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     repo: SupabaseConversationRepository = Depends(get_conversation_repo),
 ):
+    try:
+        resolved = resolve_list_client_id(
+            current_client.role, current_client.client_id, client_id
+        )
+    except TenantScopeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
     uc = ListConversationsUseCase(repo=repo)
     dto = ListConversationsInput(
-        client_id=current_client.client_id, limit=limit, offset=offset,
+        client_id=resolved, limit=limit, offset=offset,
     )
     outputs, total = await uc.execute(dto)
     return ConversationListResponse(

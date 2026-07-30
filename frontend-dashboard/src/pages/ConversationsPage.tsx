@@ -74,7 +74,9 @@ export default function ConversationsPage() {
       {/* Header */}
       <div className="relative z-10">
         <h2 className="text-2xl font-bold text-white">Conversaciones</h2>
-        <p className="text-sm text-zinc-500 mt-1">Historial de conversaciones con clientes</p>
+        <p className="text-sm text-zinc-500 mt-1">
+          Chats de WhatsApp con personas (no confundir con Clientes = negocios)
+        </p>
       </div>
 
       {/* Client Selector */}
