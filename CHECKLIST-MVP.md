@@ -1,5 +1,9 @@
 # Checklist MVP — agencias-ia (2026-07-06)
 
+> **HISTÓRICO / OBSOLETO (2026-07-30).** Checklist de merge `develop` (jul-6).  
+> Estado actual y pendientes reales: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** (§5 / §10).  
+> Prod ya está en `main` + Dokploy; no uses “pendiente mergear develop” de este archivo.
+
 Versión corta y accionable. Detalle en `GUIA-CAMBIOS-2026-07-06.md` y
 `HANDOFF-2026-07-06.md`.
 

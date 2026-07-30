@@ -1,8 +1,7 @@
 # Guía de Despliegue: Agencias IA en Dokploy
 
-> **Última actualización**: 4 Julio 2026
-> **Stack**: Docker Compose (8 servicios) + Traefik + GitHub auto-deploy
-> **Tiempo de deploy**: ~5-8 min (build) + 30s (cold start)
+> **Última actualización operativa:** ver dominio y stack en **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** (§8 / §10) — 2026-07-30.  
+> Esta guía (borrador jul-4) sigue siendo útil para pasos Dokploy; URLs/env pueden diferir (prod = YCloud + `agencias.orinocostudios.org`).
 > **Estado**: ✅ Desplegado en `proyecto: agencias-ia` → `compose: agencias-ia-stack`
 
 ---

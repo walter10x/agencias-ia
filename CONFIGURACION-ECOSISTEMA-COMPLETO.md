@@ -502,8 +502,12 @@ CREDENTIALS_ENCRYPTION_KEY=...
 | Doc | Rol |
 |-----|-----|
 | **Este archivo** | Fuente de verdad del ecosistema YCloud + roadmap operativo |
-| `PLAN-MVP.md` | Plan técnico histórico por fases (código); ver estado en §5 aquí |
 | `README.md` | Entrada al repo |
+| `PLAN-MVP.md` | Plan técnico histórico por fases; banner apunta aquí |
+| `SECURITY-TODO.md` | Rotación de credenciales (hardening aplazado) |
 | `scripts/onboard-tenant-template.sql` | Alternativa SQL al panel |
-| `SECURITY-TODO.md` | Rotación de credenciales |
+| `GUIA-DESPLIEGUE-DOKPLOY.md` | Pasos Dokploy (URLs/env: cruzar con §8/§10) |
+| `GUIA-APLICACION.md` / `PRODUCTIVIDAD.md` | Uso del panel (URLs pueden ser localhost) |
+| `INFORME-ESTADO-MVP.md`, `CHECKLIST-MVP.md`, `HANDOFF-*`, `GUIA-CAMBIOS-*`, `GUIA-CONEXION-CLIENTES.md`, `GUIA-INTEGRACION.md` | **Históricos** — banner OBSOLETO; no decidir pendientes con ellos |
+| `backend-core/specs/*` | Specs de diseño (algunos aún mencionan Evolution/Meta puro; código = YCloud en prod) |
 

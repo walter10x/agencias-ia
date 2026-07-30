@@ -1,7 +1,8 @@
 # Guía de Integración: WhatsApp + IA + n8n
 
-> **Última actualización**: 3 Julio 2026
-> **Estado**: Meta configurado, webhook funcionando, Cloudflare Tunnel activo, pipeline verificado. **Falta: API key del LLM.**
+> **HISTÓRICO (setup jul-3).** Cloudflare Tunnel + Meta.  
+> Canal y estado actuales: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** (YCloud, prod HTTPS, LLM OK).  
+> No uses “falta API key LLM” de este archivo.
 
 ---
 

@@ -1,6 +1,7 @@
 # Agencia IA — Frontend Dashboard
 
-> Panel de control SaaS multi-tenant para gestión de agentes IA sobre WhatsApp.
+> Panel de control SaaS multi-tenant para gestión de agentes IA sobre WhatsApp.  
+> **Estado del producto / onboarding:** raíz del repo → **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** (§5.5). Canal prod = **YCloud Coexistence**.
 
 `frontend-dashboard` es la aplicación web del proyecto **Agencia IA**. Es un SPA construido con React 19, Vite 8 y Tailwind v4 que consume la API REST del backend FastAPI (`backend-core`) y le permite a un superadmin gestionar clientes, agentes IA, leads y conversaciones, y a cada cliente final administrar su propio agente desde una vista limitada a su `client_id`.
 
@@ -82,7 +83,7 @@ Agencia IA estandariza ese flujo: el dueño se registra, se le aprueba, se le co
 | Servicio | Uso |
 |----------|-----|
 | **Supabase (PostgreSQL)** | Persistencia multi-tenant, RLS deseado |
-| **Meta Cloud API (WhatsApp Graph v22.0)** | Recepción y envío de mensajes por WABA central |
+| **YCloud + WhatsApp Coexistence** | Canal prod (webhook `/webhook/ycloud`); Meta Cloud API como adaptador legacy |
 | **n8n** | Automatización de flujos secundarios |
 | **JWT (HS256)** | Tokens stateless firmados con `python-jose` |
 

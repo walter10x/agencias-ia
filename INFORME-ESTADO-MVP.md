@@ -1,5 +1,9 @@
 # Informe de estado — agencias-ia (2026-07-05)
 
+> **HISTÓRICO / OBSOLETO (2026-07-30).** Snapshot de gaps del 5-jul.  
+> Estado actual: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`**.  
+> Agenda, YCloud, persistencia, panel onboarding y prod ya existen; no uses este informe para decidir qué falta.
+
 Objetivo de negocio: vender automatización de mensajes WhatsApp + manejo de agenda para clientes (SaaS multi-tenant).
 
 ## Qué hay hoy

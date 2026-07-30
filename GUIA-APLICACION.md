@@ -1,7 +1,7 @@
 # Guía de la Aplicación — Agencia IA
 
-> Guía de USO de la plataforma. Qué hace cada página, cómo se usa y cómo acceder.
-> Para el roadmap técnico y plan de desarrollo ver `GUIA-CONEXION-CLIENTES.md`.
+> Guía de USO de la plataforma. Qué hace cada página, cómo se usa y cómo acceder.  
+> Roadmap / estado: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** (no `GUIA-CONEXION-CLIENTES.md`, obsoleta).
 
 ---
 

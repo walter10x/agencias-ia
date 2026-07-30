@@ -1,5 +1,9 @@
 # Prompt de continuación para Claude Code
 
+> **HISTÓRICO (2026-07-30).** Prompt de handoff post-Fases 0–5 (Meta-centric).  
+> Antes de continuar trabajo: lee **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** (YCloud + Orinoco + panel).  
+> Canal prod = YCloud Coexistence, no solo Meta Cloud API.
+
 Copia lo que sigue (bloque entre las líneas) como primer mensaje en Claude Code, abierto en la raíz del repo `agencias-ia`.
 
 ---

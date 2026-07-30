@@ -1,7 +1,8 @@
 # ⚡ PRODUCTIVIDAD — Sacale el Máximo a tu Agencia IA
 
-> Guía práctica. Nada de teoría.  
-> Cómo usar la plataforma **todos los días** para ganar más clientes y dar mejor servicio.
+> Guía práctica de uso diario.  
+> URLs prod: **`https://agencias.orinocostudios.org`** (no asumas solo localhost).  
+> Operativa Inbox / Orinoco: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** §5.3.
 
 ---
 

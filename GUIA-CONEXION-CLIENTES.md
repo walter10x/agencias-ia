@@ -233,5 +233,5 @@ Todo verde antes de marcar una fase como completa.
 
 ---
 
-> **Documento ÚNICO**. No hay otro plan. Si ves un `.md` de planificación que no es este, está obsoleto.
-> Próxima fase: **FASE 2 — Página pública de la plataforma + Frontend Auth**.
+> **OBSOLETO.** No hay “documento único” aquí. Fuente de verdad: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`**.
+> Pendiente real: 2º número WhatsApp (paso 24) + plantilla Meta APPROVED (paso 21).

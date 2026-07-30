@@ -1,5 +1,9 @@
 # SECURITY-TODO — Rotación de credenciales (Fase 0.3)
 
+> **Sigue vigente como checklist de hardening** (aplazado a propósito 2026-07-30; ver CONFIG §5.1 bloque D).  
+> Estado operativo del producto: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`**.  
+> Nota: canal prod actual = **YCloud** (no solo Meta); rotar también keys YCloud si circularon en chat.
+
 Generado durante el saneamiento de Fase 0 del `PLAN-MVP.md` (2026-07-05).
 El agente que hizo el saneamiento **no tiene acceso** a Meta, Supabase, Dokploy
 ni a los entornos donde estas credenciales pudieron usarse — por eso esto es

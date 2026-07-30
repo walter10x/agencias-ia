@@ -1,5 +1,8 @@
 # Guía de cambios — Sesión 2026-07-06
 
+> **HISTÓRICO (2026-07-30).** Diario de la sesión del 6-jul.  
+> Estado actual: **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`**.
+
 Qué se hizo, por qué, y cómo queda el sistema. Complementa el
 `HANDOFF-2026-07-06.md` (pasos para continuar) y el `CHECKLIST-MVP.md`
 (vista rápida).
