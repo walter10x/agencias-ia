@@ -20,6 +20,7 @@ from app.infrastructure.http.feedback_router import router as feedback_router
 from app.infrastructure.http.landing_router import admin_router as landing_admin_router
 from app.infrastructure.http.landing_router import public_router as landing_public_router
 from app.infrastructure.http.lead_router import router as lead_router
+from app.infrastructure.http.contact_router import router as contact_router
 from app.infrastructure.templates.router import router as template_router
 
 logger = logging.getLogger(__name__)
@@ -115,7 +116,8 @@ app.include_router(client_router, prefix="/api/v1/clients", tags=["Clients"])
 app.include_router(agent_router, prefix="/api/v1/agents", tags=["Agents"])
 app.include_router(conversation_router, prefix="/api/v1/conversations", tags=["Conversations"])
 app.include_router(lead_router, prefix="/api/v1/leads", tags=["Leads"])
-app.include_router(appointment_router, prefix="/api/v1/appointments", tags=["Appointments"])
+    app.include_router(contact_router, prefix="/api/v1/contacts", tags=["Contacts"])
+    app.include_router(appointment_router, prefix="/api/v1/appointments", tags=["Appointments"])
 app.include_router(feedback_router, prefix="/api/v1/feedback", tags=["Feedback"])
 app.include_router(template_router, prefix="/api/v1/templates", tags=["Templates"])
 app.include_router(landing_public_router, prefix="/api/v1/landing", tags=["Landing Pages"])

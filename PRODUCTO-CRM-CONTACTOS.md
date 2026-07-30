@@ -1,8 +1,27 @@
 # Producto — CRM ligero: Ficha de contacto
 
-**Estado:** Diseño listo para implementar (2026-07-30).  
-**No implementado aún.** Cuando digamos “empezamos”, este es el contrato.  
+**Estado:** 🔄 CRM-1 + CRM-2 hechos (2026-07-30). Siguiente: CRM-3 notas.  
 **Fuente operativa general:** `CONFIGURACION-ECOSISTEMA-COMPLETO.md`.
+
+### Reglas de trabajo (obligatorias)
+
+- Arquitectura **hexagonal** (domain ← application ← infrastructure)
+- **TDD** en use cases
+- **Clean Code** + **KISS** (CRM-1 = agregación lectura; sin tabla nueva)
+- **Seguridad:** JWT + scope `client_id`; validar/normalizar teléfono; sin secretos en logs
+- **UI:** menú **Contactos** = personas finales; **Clientes** = negocios tenants (no mezclar)
+
+### Progreso
+
+| Fase | Entrega | Estado |
+|------|---------|--------|
+| **CRM-0** | Spec + reglas | ✅ |
+| **CRM-1** | API agregación por teléfono + lista | ✅ |
+| **CRM-2** | Panel Contactos (lista + ficha) | ✅ |
+| **CRM-3** | Notas/etiquetas editables | ⏳ |
+| **CRM-4** | Auto-vínculo al agendar / primer WA | ⏳ |
+| **CRM-5** | Reactivación inactivos | ⏳ |
+| **Caja** | Fuera de alcance | — |
 
 ---
 

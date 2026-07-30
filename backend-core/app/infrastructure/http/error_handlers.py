@@ -10,6 +10,7 @@ from app.domain.shared.errors import (
     AppointmentNotFoundError,
     AppointmentOverlapError,
     ClientNotFoundError,
+    ContactNotFoundError,
     ConversationNotFoundError,
     DomainError,
     EmailError,
@@ -185,6 +186,13 @@ async def appointment_not_found_handler(request: Request, exc: AppointmentNotFou
     )
 
 
+async def contact_not_found_handler(request: Request, exc: ContactNotFoundError) -> JSONResponse:
+    return JSONResponse(
+        status_code=404,
+        content={"error_type": "contact_not_found", "detail": exc.message},
+    )
+
+
 def register_error_handlers(app):
     """Register all domain exception handlers on a FastAPI app.
 
@@ -198,6 +206,7 @@ def register_error_handlers(app):
     app.add_exception_handler(ConversationNotFoundError, conversation_not_found_handler)
     app.add_exception_handler(InvalidLeadError, invalid_lead_error_handler)
     app.add_exception_handler(LeadNotFoundError, lead_not_found_handler)
+    app.add_exception_handler(ContactNotFoundError, contact_not_found_handler)
     app.add_exception_handler(InvalidFeedbackError, invalid_feedback_error_handler)
     app.add_exception_handler(FeedbackNotFoundError, feedback_not_found_handler)
     app.add_exception_handler(ProactiveMessageLimitError, proactive_message_limit_handler)

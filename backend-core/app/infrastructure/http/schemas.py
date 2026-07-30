@@ -578,3 +578,53 @@ class AdminClientResponse(BaseModel):
     plan: str
     created_at: str
     updated_at: str
+
+
+# ============================================================================
+# Contact CRM-1 Schemas (agregación lectura)
+# ============================================================================
+
+
+class ContactLeadSnippetResponse(BaseModel):
+    id: str
+    status: str
+    score: int
+    notes: str
+    name: str
+
+
+class ContactConversationSnippetResponse(BaseModel):
+    id: str
+    status: str
+    updated_at: str
+
+
+class ContactAppointmentSnippetResponse(BaseModel):
+    id: str
+    starts_at: str
+    status: str
+    contact_name: str
+
+
+class ContactSummaryResponse(BaseModel):
+    phone: str
+    display_name: str
+    lead_status: str | None = None
+    last_activity_at: str | None = None
+    has_conversation: bool = False
+    has_appointments: bool = False
+
+
+class ContactListResponse(BaseModel):
+    items: list[ContactSummaryResponse]
+    total: int
+
+
+class ContactDetailResponse(BaseModel):
+    client_id: str
+    phone: str
+    display_name: str
+    lead: ContactLeadSnippetResponse | None = None
+    conversations: list[ContactConversationSnippetResponse] = []
+    appointments: list[ContactAppointmentSnippetResponse] = []
+    last_activity_at: str | None = None

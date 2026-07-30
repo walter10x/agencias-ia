@@ -57,6 +57,11 @@ class LeadNotFoundError(DomainError):
     pass
 
 
+class ContactNotFoundError(DomainError):
+    """Error cuando no hay ficha de contacto (lead/chat/cita) para el teléfono."""
+    pass
+
+
 class InvalidFeedbackError(DomainError):
     """Error cuando los datos del feedback son inválidos."""
     pass
