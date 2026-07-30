@@ -488,6 +488,7 @@ CREDENTIALS_ENCRYPTION_KEY=...
 - Orinoco: WhatsApp → bot → agenda demos → panel → aviso equipo.
 - Inbox humano como backup (§5.3).
 - Panel onboarding: aprobar, horario, connect/disconnect WhatsApp (§5.5).
+- **CRM ligero Contactos** (CRM-0…5): lista, ficha, notas, auto-lead WA/cita, inactivos + marcar contactado.
 - Código recordatorios HSM cableado a `appointment_reminder_2`.
 
 ### Qué falta (solo externo / opcional)
@@ -496,14 +497,14 @@ CREDENTIALS_ENCRYPTION_KEY=...
 2. **Paso 21:** esperar APPROVED Meta de la plantilla.
 3. **Hardening:** rotar secretos que hayan circulado en chat (aplazado).
 4. n8n: solo extras CRM externos / Sheets; no bloquea MVP.
-5. **CRM ligero (ficha contacto):** CRM-1…4 ✅ (`PRODUCTO-CRM-CONTACTOS.md`). Opcional: CRM-5 reactivación.
+5. **CRM ligero (ficha Contactos):** CRM-0…5 ✅ — ver `PRODUCTO-CRM-CONTACTOS.md`. Pendiente solo etiquetas dedicadas / Caja (fuera de alcance).
 
 ### Documentos relacionados
 
 | Doc | Rol |
 |-----|-----|
 | **Este archivo** | Fuente de verdad del ecosistema YCloud + roadmap operativo |
-| **`PRODUCTO-CRM-CONTACTOS.md`** | Diseño CRM ligero (ficha unificada) — siguiente capa de producto |
+| **`PRODUCTO-CRM-CONTACTOS.md`** | CRM ligero Contactos — **MVP CRM-0…5 completo** |
 | `README.md` | Entrada al repo |
 | `PLAN-MVP.md` | Plan técnico histórico por fases; banner apunta aquí |
 | `SECURITY-TODO.md` | Rotación de credenciales (hardening aplazado) |

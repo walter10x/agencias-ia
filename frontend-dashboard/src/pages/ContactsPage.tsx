@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ContactRound, MessageSquare, Phone, Search } from "lucide-react";
@@ -7,6 +8,15 @@ const CARD =
   "bg-zinc-900 border border-zinc-800 rounded-xl transition-all duration-300 ease-out hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20";
 const BADGE =
   "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium border";
+const FILTER =
+  "px-3 py-1.5 text-xs font-medium rounded-lg border transition-all";
+
+const FILTERS: { label: string; days: number | null }[] = [
+  { label: "Todos", days: null },
+  { label: "Inactivos 30+ días", days: 30 },
+  { label: "60+ días", days: 60 },
+  { label: "90+ días", days: 90 },
+];
 
 function statusLabel(status: string | null) {
   if (!status) return null;
@@ -37,9 +47,11 @@ function formatWhen(iso: string | null) {
 
 export default function ContactsPage() {
   const navigate = useNavigate();
+  const [inactiveDays, setInactiveDays] = useState<number | null>(null);
+
   const query = useQuery({
-    queryKey: ["contacts"],
-    queryFn: () => fetchContacts(100, 0),
+    queryKey: ["contacts", inactiveDays],
+    queryFn: () => fetchContacts(100, 0, inactiveDays),
   });
 
   const items = query.data?.items ?? [];
@@ -51,6 +63,27 @@ export default function ContactsPage() {
         <p className="text-sm text-zinc-500">
           Personas que escriben o agendan (no confundir con Clientes = negocios).
         </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {FILTERS.map((f) => {
+          const active = inactiveDays === f.days;
+          return (
+            <button
+              key={f.label}
+              type="button"
+              onClick={() => setInactiveDays(f.days)}
+              className={
+                FILTER +
+                (active
+                  ? " bg-amber-500 text-black border-amber-500"
+                  : " bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600 hover:text-white")
+              }
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {query.isLoading && (
@@ -76,9 +109,13 @@ export default function ContactsPage() {
       {!query.isLoading && !query.error && items.length === 0 && (
         <div className={CARD + " flex flex-col items-center justify-center py-16 text-center"}>
           <ContactRound size={36} className="text-zinc-600 mb-4" />
-          <p className="text-white font-medium mb-1">Aún no hay contactos</p>
+          <p className="text-white font-medium mb-1">
+            {inactiveDays ? "Nadie inactivo con ese filtro" : "Aún no hay contactos"}
+          </p>
           <p className="text-sm text-zinc-500 max-w-sm">
-            Aparecerán cuando alguien escriba por WhatsApp, sea lead o tenga una cita.
+            {inactiveDays
+              ? "Prueba otro periodo o vuelve a Todos."
+              : "Aparecerán cuando alguien escriba por WhatsApp, sea lead o tenga una cita."}
           </p>
         </div>
       )}
@@ -108,6 +145,11 @@ export default function ContactsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 justify-end shrink-0">
+                  {c.inactive_days != null && c.inactive_days >= 30 && (
+                    <span className={`${BADGE} bg-orange-500/10 text-orange-400 border-orange-500/20`}>
+                      {c.inactive_days}d inactivo
+                    </span>
+                  )}
                   {c.lead_status && (
                     <span className={`${BADGE} bg-amber-500/10 text-amber-400 border-amber-500/20`}>
                       {statusLabel(c.lead_status)}

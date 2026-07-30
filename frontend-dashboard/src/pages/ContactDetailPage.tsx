@@ -11,8 +11,9 @@ import {
   AlertTriangle,
   Loader2,
   Save,
+  UserCheck,
 } from "lucide-react";
-import { fetchContactByPhone, updateContactNotes } from "@/api/contact";
+import { fetchContactByPhone, updateContactNotes, markContactContacted } from "@/api/contact";
 import { useToast } from "@/components/Toast";
 
 const CARD = "bg-zinc-900 border border-zinc-800 rounded-xl";
@@ -85,10 +86,27 @@ export default function ContactDetailPage() {
     onError: (err: Error) => toast("error", err.message),
   });
 
+  const markMutation = useMutation({
+    mutationFn: () => markContactContacted(phone),
+    onSuccess: (data) => {
+      toast("success", "Marcado como contactado");
+      queryClient.setQueryData(["contact", phone], data);
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    },
+    onError: (err: Error) => toast("error", err.message),
+  });
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     mutation.mutate();
   }
+
+  const inactiveDays = (() => {
+    if (!query.data?.last_activity_at) return null;
+    const last = new Date(query.data.last_activity_at).getTime();
+    if (Number.isNaN(last)) return null;
+    return Math.max(0, Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24)));
+  })();
 
   if (query.isLoading) {
     return (
@@ -139,7 +157,28 @@ export default function ContactDetailPage() {
               <Phone size={13} /> {c.phone}
             </p>
             <p className="text-xs text-zinc-600">Última actividad: {formatWhen(c.last_activity_at)}</p>
+            {inactiveDays != null && inactiveDays >= 30 && (
+              <p className="text-xs text-orange-400 mt-1">{inactiveDays} días sin actividad</p>
+            )}
           </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => markMutation.mutate()}
+            disabled={markMutation.isPending}
+            className={BTN2}
+          >
+            {markMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <UserCheck size={14} />
+            )}
+            Marcar contactado
+          </button>
+          <p className="text-xs text-zinc-600 self-center">
+            Tras llamar o escribir por Business App / WhatsApp.
+          </p>
         </div>
       </div>
 

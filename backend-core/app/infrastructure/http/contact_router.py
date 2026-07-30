@@ -1,4 +1,4 @@
-"""HTTP Router: Contactos CRM (agregación + notas)."""
+"""HTTP Router: Contactos CRM (agregación + notas + reactivación)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,10 @@ from app.application.contact.get_contact import (
     GetContactUseCase,
     ListContactsInput,
     ListContactsUseCase,
+)
+from app.application.contact.mark_contact_contacted import (
+    MarkContactContactedInput,
+    MarkContactContactedUseCase,
 )
 from app.application.contact.update_contact_notes import (
     UpdateContactNotesInput,
@@ -78,6 +82,12 @@ async def list_contacts(
     current_client: CurrentClientOutput = Depends(get_current_client),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    inactive_days: int | None = Query(
+        None,
+        ge=1,
+        le=3650,
+        description="Solo contactos sin actividad desde al menos N días (CRM-5)",
+    ),
     lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
     conversation_repo: SupabaseConversationRepository = Depends(get_conversation_repo),
     appointment_repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
@@ -88,6 +98,7 @@ async def list_contacts(
             client_id=current_client.client_id,
             limit=limit,
             offset=offset,
+            inactive_days_min=inactive_days,
         )
     )
     return ContactListResponse(
@@ -99,6 +110,7 @@ async def list_contacts(
                 last_activity_at=i.last_activity_at,
                 has_conversation=i.has_conversation,
                 has_appointments=i.has_appointments,
+                inactive_days=i.inactive_days,
             )
             for i in items
         ],
@@ -139,6 +151,31 @@ async def update_contact_notes(
                 phone=phone,
                 notes=body.notes,
                 display_name=body.display_name,
+            )
+        )
+    except InvalidLeadError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
+    return _detail_to_response(detail)
+
+
+@router.post("/by-phone/{phone}/mark-contacted", response_model=ContactDetailResponse)
+async def mark_contact_contacted(
+    phone: str,
+    current_client: CurrentClientOutput = Depends(get_current_client),
+    lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
+    conversation_repo: SupabaseConversationRepository = Depends(get_conversation_repo),
+    appointment_repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
+):
+    """CRM-5: marca el contacto como contactado (reactivación operativa en panel)."""
+    get_uc = GetContactUseCase(lead_repo, conversation_repo, appointment_repo)
+    uc = MarkContactContactedUseCase(lead_repo, get_uc)
+    try:
+        detail = await uc.execute(
+            MarkContactContactedInput(
+                client_id=current_client.client_id,
+                phone=phone,
             )
         )
     except InvalidLeadError as exc:

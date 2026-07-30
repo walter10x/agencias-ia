@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.domain.appointment.repository import AppointmentRepository
 from app.domain.conversation.repository import ConversationRepository
@@ -55,6 +55,7 @@ class ContactSummary:
     last_activity_at: str | None
     has_conversation: bool
     has_appointments: bool
+    inactive_days: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +69,7 @@ class ListContactsInput:
     client_id: str
     limit: int = 50
     offset: int = 0
+    inactive_days_min: int | None = None
 
 
 def _iso(dt: datetime | None) -> str | None:
@@ -77,6 +79,21 @@ def _iso(dt: datetime | None) -> str | None:
 def _max_iso(*values: str | None) -> str | None:
     present = [v for v in values if v]
     return max(present) if present else None
+
+
+def inactive_days_since(last_activity_at: str | None, now: datetime) -> int | None:
+    """Días enteros desde last_activity hasta now. None si no hay actividad."""
+    if not last_activity_at:
+        return None
+    try:
+        last = datetime.fromisoformat(last_activity_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    now_aware = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    delta = now_aware - last
+    return max(0, delta.days)
 
 
 class GetContactUseCase:
@@ -181,10 +198,12 @@ class ListContactsUseCase:
         lead_repo: LeadRepository,
         conversation_repo: ConversationRepository,
         appointment_repo: AppointmentRepository,
+        now_provider=None,
     ) -> None:
         self._leads = lead_repo
         self._conversations = conversation_repo
         self._appointments = appointment_repo
+        self._now = now_provider or (lambda: datetime.now(timezone.utc))
 
     async def execute(self, input: ListContactsInput) -> tuple[list[ContactSummary], int]:
         leads = await self._leads.list_by_client(
@@ -266,8 +285,32 @@ class ListContactsUseCase:
                     has_appointments=True,
                 )
 
+        now = self._now()
+        enriched: list[ContactSummary] = []
+        for c in by_phone.values():
+            days = inactive_days_since(c.last_activity_at, now)
+            enriched.append(
+                ContactSummary(
+                    phone=c.phone,
+                    display_name=c.display_name,
+                    lead_status=c.lead_status,
+                    last_activity_at=c.last_activity_at,
+                    has_conversation=c.has_conversation,
+                    has_appointments=c.has_appointments,
+                    inactive_days=days,
+                )
+            )
+
+        if input.inactive_days_min is not None:
+            min_days = max(0, input.inactive_days_min)
+            enriched = [
+                c
+                for c in enriched
+                if c.inactive_days is not None and c.inactive_days >= min_days
+            ]
+
         items = sorted(
-            by_phone.values(),
+            enriched,
             key=lambda c: c.last_activity_at or "",
             reverse=True,
         )

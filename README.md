@@ -11,14 +11,14 @@ visible desde un panel de control.
 | Documento | Para qué |
 |-----------|----------|
 | **`CONFIGURACION-ECOSISTEMA-COMPLETO.md`** | **Fuente de verdad operativa** — YCloud, Orinoco, roadmap, panel onboarding, prod |
-| **`PRODUCTO-CRM-CONTACTOS.md`** | Diseño CRM ligero (ficha contacto) — siguiente capa de producto |
+| **`PRODUCTO-CRM-CONTACTOS.md`** | CRM ligero (ficha Contactos) — MVP CRM-0…5 ✅ |
 | `PLAN-MVP.md` | Plan técnico histórico por fases de código |
 | `SECURITY-TODO.md` | Rotación de credenciales |
 | `GUIA-DESPLIEGUE-DOKPLOY.md` | Detalle de deploy |
 | `scripts/onboard-tenant-template.sql` | Alta tenant por SQL (alternativa al panel) |
 
 **Prod:** https://agencias.orinocostudios.org  
-**Estado (2026-07-30):** bot Orinoco vivo (YCloud Coexistence). Panel listo para 2º tenant (aprobar + horario + connect WA). Falta solo el 2º número WhatsApp y la aprobación Meta de la plantilla de recordatorio.
+**Estado (2026-07-30):** bot Orinoco vivo (YCloud Coexistence). Panel: onboarding tenant + **Contactos** (CRM ligero). Falta solo el 2º número WhatsApp y la aprobación Meta de la plantilla de recordatorio.
 
 ## Estructura
 

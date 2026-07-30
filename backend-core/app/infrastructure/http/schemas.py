@@ -613,6 +613,7 @@ class ContactSummaryResponse(BaseModel):
     last_activity_at: str | None = None
     has_conversation: bool = False
     has_appointments: bool = False
+    inactive_days: int | None = None
 
 
 class ContactListResponse(BaseModel):

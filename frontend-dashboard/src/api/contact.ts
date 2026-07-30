@@ -7,6 +7,7 @@ export interface ContactSummary {
   last_activity_at: string | null;
   has_conversation: boolean;
   has_appointments: boolean;
+  inactive_days?: number | null;
 }
 
 export interface ContactListData {
@@ -35,8 +36,19 @@ export interface ContactDetail {
   last_activity_at: string | null;
 }
 
-export function fetchContacts(limit = 50, offset = 0): Promise<ContactListData> {
-  return apiFetch<ContactListData>(`/contacts?limit=${limit}&offset=${offset}`);
+export function fetchContacts(
+  limit = 50,
+  offset = 0,
+  inactiveDays?: number | null,
+): Promise<ContactListData> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (inactiveDays != null && inactiveDays > 0) {
+    params.set("inactive_days", String(inactiveDays));
+  }
+  return apiFetch<ContactListData>(`/contacts?${params.toString()}`);
 }
 
 export function fetchContactByPhone(phone: string): Promise<ContactDetail> {
@@ -53,5 +65,12 @@ export function updateContactNotes(
       method: "PATCH",
       body: JSON.stringify(data),
     },
+  );
+}
+
+export function markContactContacted(phone: string): Promise<ContactDetail> {
+  return apiFetch<ContactDetail>(
+    `/contacts/by-phone/${encodeURIComponent(phone)}/mark-contacted`,
+    { method: "POST" },
   );
 }

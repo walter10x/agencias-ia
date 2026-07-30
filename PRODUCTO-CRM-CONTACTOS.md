@@ -1,6 +1,7 @@
 # Producto — CRM ligero: Ficha de contacto
 
-**Estado:** 🔄 CRM-1…4 hechos (2026-07-30). Siguiente: CRM-5 reactivación (opcional).  
+**Estado:** ✅ CRM-0…5 completo (2026-07-30). MVP CRM ligero cerrado.  
+**Fuera de alcance (sigue):** Caja; etiquetas dedicadas (notas cubren MVP).  
 **Fuente operativa general:** `CONFIGURACION-ECOSISTEMA-COMPLETO.md`.
 
 ### Reglas de trabajo (obligatorias)
@@ -20,7 +21,7 @@
 | **CRM-2** | Panel Contactos (lista + ficha) | ✅ |
 | **CRM-3** | Notas (+ nombre) editables | ✅ |
 | **CRM-4** | Auto-vínculo al agendar / primer WA | ✅ |
-| **CRM-5** | Reactivación inactivos | ⏳ |
+| **CRM-5** | Filtro inactivos + marcar contactado | ✅ |
 | **Caja** | Fuera de alcance | — |
 | Etiquetas dedicadas | Columna/tags propios | ⏳ (después; notas cubren MVP) |
 
@@ -97,17 +98,27 @@ Persona / Contacto
 
 Idempotente: no duplica leads. Si ya hay lead, solo rellena nombre vacío / `last_contacted_at` en inbound.
 
+### CRM-5 — Reactivación (hecho)
+
+| Pieza | Comportamiento |
+|-------|----------------|
+| Lista | `GET /contacts?inactive_days=30\|60\|90` — filtra por días sin actividad; cada ítem incluye `inactive_days` |
+| UI lista | Chips Todos / 30+ / 60+ / 90+ en **Contactos** |
+| Acción | `POST /contacts/by-phone/{phone}/mark-contacted` → lead `contacted` + `last_contacted_at` |
+| UI ficha | Botón **Marcar contactado** (tras llamar / escribir fuera del bot) |
+
 ---
 
 | Fase | Entrega | Riesgo |
 |------|---------|--------|
 | **CRM-0** | Spec (este doc) | — |
-| **CRM-1** | API `GET /contacts/{phone}` o `GET /contacts?phone=` → agrega lead + convs + citas | Bajo (solo lectura) |
+| **CRM-1** | API agregación lead + convs + citas | Bajo (solo lectura) |
 | **CRM-2** | Página panel **Contactos** + detalle ficha | Bajo (UI) |
-| **CRM-3** | Notas/etiquetas editables (tabla `contacts` o ampliar lead) | Medio |
-| **CRM-4** | Al agendar / primer WhatsApp → asegurar lead/contacto | Medio |
-| **CRM-5** | (Opcional) “Inactivo N días” + reactivación | Más adelante |
+| **CRM-3** | Notas/nombre editables vía lead | Medio |
+| **CRM-4** | Al agendar / primer WhatsApp → asegurar lead | Medio |
+| **CRM-5** | Inactivo N días + marcar contactado | Bajo |
 | **Caja** | Fuera de este doc | Otro módulo |
+
 
 ---
 
@@ -127,11 +138,13 @@ Idempotente: no duplica leads. Si ya hay lead, solo rellena nombre vacío / `las
 | Lista citas | `appointments` del tenant + phone |
 | Lead id | link a `/app/leads/:id` si existe |
 
-### API propuesta (borrador)
+### API (implementada)
 
 ```http
-GET /contacts?limit=&offset=
-GET /contacts/by-phone/{phone}
+GET  /api/v1/contacts?limit=&offset=&inactive_days=
+GET  /api/v1/contacts/by-phone/{phone}
+PATCH /api/v1/contacts/by-phone/{phone}/notes
+POST /api/v1/contacts/by-phone/{phone}/mark-contacted
 ```
 
 Respuesta (forma):
@@ -168,11 +181,12 @@ En CRM-1: normalizar al leer (helper único). No hace falta backfill masivo el d
 
 ## 7. Criterio de “hecho” para empezar a vender la capa CRM
 
-- [ ] Desde el panel abres una persona y ves **chat + citas (+ lead)** juntos.
-- [ ] No rompiste E2E Orinoco (WhatsApp → agenda).
-- [ ] Un dueño de peluquería entiende la pantalla en &lt; 1 minuto.
+- [x] Desde el panel abres una persona y ves **chat + citas (+ lead)** juntos.
+- [x] Notas/nombre editables; auto-lead en WA/cita; filtro inactivos + marcar contactado.
+- [x] No rompiste E2E Orinoco (WhatsApp → agenda) al añadir Contactos.
+- [x] Copy claro: **Contactos** ≠ **Clientes** (negocios).
 
-Cuando eso esté → ya puedes decir en la oferta: “incluye ficha de clientes”.
+Oferta: “incluye ficha de clientes (Contactos)”.
 
 ---
 
@@ -182,19 +196,15 @@ Cuando eso esté → ya puedes decir en la oferta: “incluye ficha de clientes�
 |-----------|-----|---------|
 | Externo | Paso 24 — 2º número | Cliente |
 | Externo | Paso 21 — plantilla Meta | Meta |
-| Producto siguiente | **CRM-1 + CRM-2** (este doc) | Nosotros, cuando digamos play código |
+| Producto | **CRM-0…5** ✅ (este doc) | Hecho |
 | Aplazado | Hardening secretos | Decisión |
-| Después | Caja / n8n CRM externo | Demanda |
+| Después | Etiquetas dedicadas / Caja / n8n CRM externo | Demanda |
 
 ---
 
-## 9. Decisión de arranque (checklist antes de codear)
+## 9. Decisiones tomadas
 
-Cuando empecemos implementación, confirmar:
-
-1. ¿CRM-1 solo lectura (agregación) primero? → **Sí (recomendado).**
-2. ¿Nombre en menú: “Contactos” o “Clientes finales”? → evitar confusión con tenant “Clientes”.
-3. ¿Orinoco usa la misma pantalla para demos? → **Sí.**
-
-**Recomendación de copy en el menú:** `Contactos` (personas).  
-`Clientes` = negocios tenants (como ahora).
+1. CRM-1 solo lectura primero → luego CRM-3…5.
+2. Menú: **Contactos** (personas). **Clientes** = negocios tenants.
+3. Orinoco usa la misma pantalla para demos.
+4. Persistencia de notas vía `leads` (sin tabla `contacts` en el MVP).
