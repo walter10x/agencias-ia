@@ -28,6 +28,7 @@ from app.infrastructure.http.dependencies import (
     get_appointment_repo,
     get_client_repo,
     get_current_client,
+    get_lead_repo,
 )
 from app.infrastructure.http.schemas import (
     AppointmentCreateRequest,
@@ -41,6 +42,7 @@ from app.infrastructure.persistence.appointment_repository import (
     SupabaseAppointmentRepository,
 )
 from app.infrastructure.persistence.client_repository import SupabaseClientRepository
+from app.infrastructure.persistence.lead_repository import SupabaseLeadRepository
 
 router = APIRouter()
 
@@ -52,8 +54,11 @@ async def create_appointment(
     current_client: CurrentClientOutput = Depends(get_current_client),
     repo: SupabaseAppointmentRepository = Depends(get_appointment_repo),
     client_repo: SupabaseClientRepository = Depends(get_client_repo),
+    lead_repo: SupabaseLeadRepository = Depends(get_lead_repo),
 ):
-    uc = CreateAppointmentUseCase(repo=repo, schedule_repo=client_repo)
+    uc = CreateAppointmentUseCase(
+        repo=repo, schedule_repo=client_repo, lead_repo=lead_repo
+    )
     dto = CreateAppointmentInput(
         client_id=current_client.client_id,
         starts_at=body.starts_at,

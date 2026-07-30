@@ -1,13 +1,13 @@
 # Producto — CRM ligero: Ficha de contacto
 
-**Estado:** 🔄 CRM-1…3 hechos (2026-07-30). Siguiente: CRM-4 auto-vínculo.  
+**Estado:** 🔄 CRM-1…4 hechos (2026-07-30). Siguiente: CRM-5 reactivación (opcional).  
 **Fuente operativa general:** `CONFIGURACION-ECOSISTEMA-COMPLETO.md`.
 
 ### Reglas de trabajo (obligatorias)
 
 - Arquitectura **hexagonal** (domain ← application ← infrastructure)
 - **TDD** en use cases
-- **Clean Code** + **KISS** (notas vía lead upsert; sin tabla `contacts` aún)
+- **Clean Code** + **KISS** (notas + ensure lead vía lead; sin tabla `contacts` aún)
 - **Seguridad:** JWT + scope `client_id`; validar/normalizar teléfono; sin secretos en logs
 - **UI:** menú **Contactos** = personas finales; **Clientes** = negocios tenants (no mezclar)
 
@@ -19,7 +19,7 @@
 | **CRM-1** | API agregación por teléfono + lista | ✅ |
 | **CRM-2** | Panel Contactos (lista + ficha) | ✅ |
 | **CRM-3** | Notas (+ nombre) editables | ✅ |
-| **CRM-4** | Auto-vínculo al agendar / primer WA | ⏳ |
+| **CRM-4** | Auto-vínculo al agendar / primer WA | ✅ |
 | **CRM-5** | Reactivación inactivos | ⏳ |
 | **Caja** | Fuera de alcance | — |
 | Etiquetas dedicadas | Columna/tags propios | ⏳ (después; notas cubren MVP) |
@@ -88,7 +88,16 @@ Persona / Contacto
 - No montamos caja ni n8n obligatorio.
 - No migraciones destructivas: la ficha puede ser **vista agregada** al inicio (API que junta datos por teléfono). Persistencia propia de `contacts` solo si hace falta para notas/tags.
 
-### Enfoque por fases de implementación
+### CRM-4 — Auto-vínculo (hecho)
+
+| Evento | Comportamiento |
+|--------|----------------|
+| Mensaje WhatsApp entrante | `EnsureContactLead` (`source=whatsapp`) tras persistir conversación |
+| Cita creada (panel o tool `agendar_cita`) | `EnsureContactLead` (`source=appointment`); teléfono normalizado E.164 |
+
+Idempotente: no duplica leads. Si ya hay lead, solo rellena nombre vacío / `last_contacted_at` en inbound.
+
+---
 
 | Fase | Entrega | Riesgo |
 |------|---------|--------|

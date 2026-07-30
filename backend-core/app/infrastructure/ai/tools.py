@@ -162,6 +162,12 @@ def _build_client_repo():
     return SupabaseClientRepository(_build_supabase_client())
 
 
+def _build_lead_repo():
+    from app.infrastructure.persistence.lead_repository import SupabaseLeadRepository
+
+    return SupabaseLeadRepository(_build_supabase_client())
+
+
 def _build_appointment_notifier():
     from app.infrastructure.whatsapp.appointment_notifier import (
         WhatsAppAppointmentNotifier,
@@ -315,6 +321,7 @@ async def _agendar_cita(
     uc = CreateAppointmentUseCase(
         repo=_build_appointment_repo(),
         schedule_repo=_build_schedule_repo(),
+        lead_repo=_build_lead_repo(),
     )
     output = await uc.execute(
         CreateAppointmentInput(

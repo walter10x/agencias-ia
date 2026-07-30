@@ -496,7 +496,7 @@ CREDENTIALS_ENCRYPTION_KEY=...
 2. **Paso 21:** esperar APPROVED Meta de la plantilla.
 3. **Hardening:** rotar secretos que hayan circulado en chat (aplazado).
 4. n8n: solo extras CRM externos / Sheets; no bloquea MVP.
-5. **CRM ligero (ficha contacto):** CRM-1…3 ✅ (`PRODUCTO-CRM-CONTACTOS.md`). Siguiente: CRM-4 auto-vínculo.
+5. **CRM ligero (ficha contacto):** CRM-1…4 ✅ (`PRODUCTO-CRM-CONTACTOS.md`). Opcional: CRM-5 reactivación.
 
 ### Documentos relacionados
 

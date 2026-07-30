@@ -50,7 +50,9 @@ class Lead:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
-    VALID_SOURCES = frozenset({"whatsapp", "webchat", "telegram", "manual", "import", "landing"})
+    VALID_SOURCES = frozenset(
+        {"whatsapp", "webchat", "telegram", "manual", "import", "landing", "appointment"}
+    )
 
     def __post_init__(self) -> None:
         if not self.phone.strip():

@@ -190,6 +190,16 @@ def _get_conversation_repo() -> ConversationRepository:
     return SupabaseConversationRepository(client)
 
 
+def _get_lead_repo():
+    """Repositorio de leads para CRM-4 (ensure contacto en inbound)."""
+    settings = get_settings()
+    from app.infrastructure.http.supabase_client import SupabaseHttpClient
+    from app.infrastructure.persistence.lead_repository import SupabaseLeadRepository
+
+    client = SupabaseHttpClient(settings.supabase_url, settings.supabase_service_key)
+    return SupabaseLeadRepository(client)
+
+
 def _persist_incoming_message_sync(
     client_id: str,
     phone: str,
@@ -248,6 +258,23 @@ async def _persist_incoming_message(
 
     # Upsert: crea la conversación nueva o refresca updated_at de la existente
     await repo.save(conversation)
+
+    # CRM-4: asegurar lead/contacto (best-effort; no bloquea el chat)
+    try:
+        from app.application.contact.ensure_contact_lead import (
+            EnsureContactLeadInput,
+            EnsureContactLeadUseCase,
+        )
+
+        await EnsureContactLeadUseCase(_get_lead_repo()).execute(
+            EnsureContactLeadInput(
+                client_id=client_id,
+                phone=phone,
+                source="whatsapp",
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"[CRM] ensure contact lead skipped: {exc}")
 
     # Historial ANTES de guardar el entrante (run_agent añade el turno nuevo)
     history_msgs = await repo.get_recent_messages(

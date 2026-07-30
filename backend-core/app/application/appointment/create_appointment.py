@@ -20,10 +20,17 @@ from app.domain.appointment.repository import (
     AppointmentRepository,
     BusinessScheduleRepository,
 )
+from app.domain.lead.repository import LeadRepository
 from app.domain.shared.errors import (
     AppointmentOverlapError,
     InvalidAppointmentError,
+    InvalidLeadError,
     OutsideBusinessHoursError,
+)
+from app.domain.shared.phone import normalize_phone
+from app.application.contact.ensure_contact_lead import (
+    EnsureContactLeadInput,
+    EnsureContactLeadUseCase,
 )
 
 
@@ -33,6 +40,7 @@ class CreateAppointmentUseCase:
     1. La cita no puede estar en el pasado.
     2. Debe caer dentro del horario del negocio.
     3. No puede solaparse con otra cita activa del mismo negocio.
+    4. CRM-4: si hay lead_repo, asegura ficha/lead del contacto (best-effort).
     """
 
     def __init__(
@@ -40,10 +48,12 @@ class CreateAppointmentUseCase:
         repo: AppointmentRepository,
         schedule_repo: BusinessScheduleRepository,
         now_provider=None,
+        lead_repo: LeadRepository | None = None,
     ) -> None:
         self._repo = repo
         self._schedule_repo = schedule_repo
         self._now = now_provider or (lambda: datetime.now(timezone.utc))
+        self._lead_repo = lead_repo
 
     async def execute(self, input: CreateAppointmentInput) -> AppointmentOutput:
         if not input.client_id.strip():
@@ -81,10 +91,12 @@ class CreateAppointmentUseCase:
                 "Appointment overlaps with an existing appointment"
             )
 
+        phone = normalize_phone(input.contact_phone) or input.contact_phone.strip()
+
         appointment = Appointment(
             client_id=UUID(input.client_id),
             conversation_id=UUID(input.conversation_id) if input.conversation_id else None,
-            contact_phone=input.contact_phone.strip(),
+            contact_phone=phone,
             contact_name=input.contact_name.strip(),
             starts_at=starts_at,
             ends_at=ends_at,
@@ -92,4 +104,26 @@ class CreateAppointmentUseCase:
         )
 
         await self._repo.save(appointment)
+        await self._ensure_contact_lead(
+            client_id=input.client_id,
+            phone=phone,
+            name=input.contact_name.strip(),
+        )
         return appointment_to_output(appointment)
+
+    async def _ensure_contact_lead(
+        self, client_id: str, phone: str, name: str
+    ) -> None:
+        if self._lead_repo is None:
+            return
+        try:
+            await EnsureContactLeadUseCase(self._lead_repo).execute(
+                EnsureContactLeadInput(
+                    client_id=client_id,
+                    phone=phone,
+                    name=name,
+                    source="appointment",
+                )
+            )
+        except InvalidLeadError:
+            return
