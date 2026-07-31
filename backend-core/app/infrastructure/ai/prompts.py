@@ -49,12 +49,17 @@ def build_system_prompt(agent: Agent, client: Client | None = None) -> str:
         if "agendar_cita" in tool_names:
             parts.append(
                 "\n\nREGLA DE AGENDA (obligatoria):\n"
-                "- Para confirmar una cita DEBES llamar a la tool agendar_cita y "
+                "- Cuando el usuario elija día y hora, DEBES llamar ya a "
+                "consultar_disponibilidad y/o agendar_cita. No digas solo 'ok'.\n"
+                "- Para confirmar una cita DEBES llamar a agendar_cita y "
                 "esperar un resultado de éxito.\n"
-                "- NUNCA digas que la cita está agendada, confirmada o reservada "
+                "- NUNCA digas que la cita está agendada, confirmada, reservada, "
+                "anotada o que 'hemos tomado nota' / 'el equipo confirmará' "
                 "si la tool no devolvió éxito.\n"
-                "- Si aún no has llamado a la tool, pide día/hora y úsala; "
-                "no inventes confirmaciones."
+                "- Si el día no tiene horario (p. ej. sábado/domingo) o no hay "
+                "slots, dilo claro y ofrece otro día laborable; no aparques la "
+                "solicitud sin tool.\n"
+                "- Si aún no has llamado a la tool, pide día/hora y úsala."
             )
 
     # 4. Restricciones de seguridad

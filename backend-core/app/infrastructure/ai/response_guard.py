@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import re
 
+# Confirmación fuerte de cita ya hecha
 _BOOKING_CLAIM = re.compile(
     r"(agendad\w*|confirmad\w*\s+la\s+cita|qued(?:o|as?)\s+(?:agendad|apuntad|confirmad)"
     r"|nos\s+vemos\s+(?:mañana|el\s+\d)|cita\s+(?:confirmada|agendada|para\s+mañana)"
-    r"|te\s+apunt[eéo]|queda\s+reservad)",
+    r"|te\s+apunt[eéo]|queda\s+reservad|hemos?\s+(?:tomado\s+nota|registrado|anotado)"
+    r"|solicitud\s*(?::|de\s+cita)|para\s+confirmar\s+la\s+cita"
+    r"|equipo\s+se\s+pondr[aá]|nos\s+pondremos?\s+en\s+contacto"
+    r"|hemos?\s+apuntado|queda\s+(?:anotad|registrad))",
     re.IGNORECASE,
 )
 _EMAIL_CLAIM = re.compile(
@@ -17,8 +21,8 @@ _EMAIL_CLAIM = re.compile(
 )
 
 _BOOKING_FALLBACK = (
-    "Para dejar la cita confirmada necesito registrarla en la agenda. "
-    "Dime otra vez el día y la hora que te vienen bien y la apunto ahora mismo."
+    "Para dejar la cita confirmada necesito registrarla en la agenda ahora. "
+    "Dime un día entre lunes y viernes y una hora, y la apunto con la herramienta."
 )
 
 _AGENDAR_OK = re.compile(r"cita agendada correctamente", re.IGNORECASE)
@@ -41,7 +45,7 @@ def tool_result_succeeded(tool_name: str, content: str) -> bool:
 def enforce_tool_truth(reply: str, successful_tools: list[str] | None) -> str:
     """Corrige confirmaciones inventadas si no hubo tool exitosa.
 
-    - No confirmar cita sin ``agendar_cita`` OK.
+    - No confirmar cita (ni "tomar nota" / "el equipo confirmará") sin ``agendar_cita`` OK.
     - No prometer email / correo (aún no hay tool de email).
     """
     text = (reply or "").strip()
@@ -55,7 +59,6 @@ def enforce_tool_truth(reply: str, successful_tools: list[str] | None) -> str:
         return _BOOKING_FALLBACK
 
     if _EMAIL_CLAIM.search(text):
-        # Quitar frases que prometen email; si queda vacío, mensaje neutro.
         cleaned = re.sub(
             r"[^.!?\n]*\b(?:e-?mail|correo)[^.!?\n]*[.!?]?",
             "",
@@ -69,9 +72,8 @@ def enforce_tool_truth(reply: str, successful_tools: list[str] | None) -> str:
                     "Cita confirmada. El equipo de Orinoco te contactará "
                     "por este mismo chat si hace falta."
                 )
-            return text  # sin booking claim ya pasó; dejar texto sin email si falla clean
+            return text
         text = cleaned
-        # Por si quedó muñón raro
         if _EMAIL_CLAIM.search(text):
             text = (
                 "Perfecto. El equipo de Orinoco te contactará por WhatsApp "

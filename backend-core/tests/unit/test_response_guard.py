@@ -26,6 +26,16 @@ def test_blocks_fake_booking_without_tool() -> None:
     assert "agenda" in out.lower()
 
 
+def test_blocks_soft_parking_without_tool() -> None:
+    reply = (
+        "Perfecto, Mathias. Hemos tomado nota de tu solicitud: sábado a las 11 am. "
+        "Para confirmar la cita, nuestro equipo se pondrá en contacto contigo."
+    )
+    out = enforce_tool_truth(reply, [])
+    assert "tomado nota" not in out.lower()
+    assert "agenda" in out.lower()
+
+
 def test_allows_booking_claim_after_successful_tool() -> None:
     reply = "Perfecto Mathias, quedas agendado mañana a las 11."
     out = enforce_tool_truth(reply, ["agendar_cita"])
