@@ -4,30 +4,34 @@ from __future__ import annotations
 
 import re
 
-# Cualquier afirmación de que la cita ya quedó / se procesó / se anotó
+# Afirmaciones de que la cita YA quedó hecha (no preguntas "¿confirmamos?").
 _BOOKING_CLAIM = re.compile(
     r"("
-    r"agendad\w*"
-    r"|confirmad\w*"
-    r"|reservad\w*"
-    r"|qued(?:o|as?)\s+(?:agendad|apuntad|confirmad|listo|registrad)"
-    r"|listo[,!]?\s+(?:mathias|ya|tu\s+cita|la\s+cita)?"
-    r"|todo\s+bien"
-    r"|ya\s+est[aá]\s+(?:hecha|list[ao]|agendada|confirmada|reservada)"
-    r"|lo\s+(?:he\s+)?(?:agend|confirm|reserv|apunt|anot|hech)"
-    r"|hemos?\s+(?:tomado\s+nota|registrado|anotado|apuntado|agendado|confirmado)"
-    r"|nos\s+vemos\s+(?:mañana|el\s+\d|el\s+\w+)"
-    r"|cita\s+(?:confirmada|agendada|reservada|lista)"
-    r"|te\s+apunt[eéo]"
-    r"|solicitud\s*(?::|de\s+cita)"
-    r"|para\s+confirmar\s+la\s+cita"
-    r"|equipo\s+se\s+pondr[aá]"
-    r"|nos\s+pondremos?\s+en\s+contacto"
-    r"|queda\s+(?:anotad|registrad|reservad|confirmad)"
-    r"|apuntad[ao]\s+(?:para|el|mañana)"
+    r"(?<![¿?])\bagendad[ao]s?\b"
+    r"|(?<![¿?])\bconfirmad[ao]s?\b"
+    r"|(?<![¿?])\breservad[ao]s?\b"
+    r"|\bqued(?:o|as)\s+(?:agendad|apuntad|confirmad|listo|registrad)"
+    r"|\bya\s+(?:est[aá]\s+)?(?:agendad|confirmad|reservad|apuntad|list[ao])"
+    r"|\btodo\s+bien\b.{0,40}\b(?:agend|confirm|reserv)"
+    r"|\blo\s+(?:he\s+)?(?:agendado|confirmado|reservado|apuntado|anotado)"
+    r"|\bhemos?\s+(?:tomado\s+nota|registrado|anotado|apuntado|agendado|confirmado)\b"
+    r"|\bnos\s+vemos\s+(?:mañana|el\s+\d)"
+    r"|\bcita\s+(?:confirmada|agendada|reservada)\b"
+    r"|\bte\s+apunt[eéo]\b"
+    r"|\bequipo\s+se\s+pondr[aá]\b"
+    r"|\bnos\s+pondremos?\s+en\s+contacto\b"
+    r"|\bqueda\s+(?:anotad|registrad|reservad|confirmad|agendad)"
     r")",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Preguntas de confirmación al cliente — NO son claims falsos
+_BOOKING_QUESTION = re.compile(
+    r"(¿\s*)?(confirmamos|te\s+confirmo|confirmas|te\s+parece|de\s+acuerdo|"
+    r"te\s+va\s+bien|okey\??|ok\??)\b",
     re.IGNORECASE,
 )
+
 _EMAIL_CLAIM = re.compile(
     r"(e-?mail|correo\s+electr[oó]nico|\brevisa\s+tu\s+correo\b|te\s+enviaremos?\s+(?:un\s+)?(?:e-?mail|correo)"
     r"|invitaci[oó]n\s+con\s+e)",
@@ -81,6 +85,16 @@ def booking_confirmation_from_tool(content: str) -> str | None:
     )
 
 
+def looks_like_booking_question(text: str) -> bool:
+    """True si el mensaje pide confirmación al cliente (aún no afirma que quedó)."""
+    t = (text or "").strip()
+    if not t:
+        return False
+    if "?" in t or "¿" in t:
+        return True
+    return bool(_BOOKING_QUESTION.search(t))
+
+
 def enforce_tool_truth(
     reply: str,
     successful_tools: list[str] | None,
@@ -90,8 +104,8 @@ def enforce_tool_truth(
     """Corrige confirmaciones inventadas si no hubo tool exitosa.
 
     Si ``agendar_cita`` sí tuvo éxito, sustituye la respuesta del LLM por un
-    mensaje determinista basado en el resultado real de la tool (no confía
-    en lo que el modelo invente).
+    mensaje determinista basado en el resultado real de la tool.
+    Las preguntas del tipo «¿Confirmamos el lunes…?» se dejan pasar.
     """
     ok = {t for t in (successful_tools or []) if t}
     booked = "agendar_cita" in ok
@@ -107,6 +121,18 @@ def enforce_tool_truth(
 
     text = (reply or "").strip()
     if not text:
+        return text
+
+    # No tumbar el flujo de confirmación al cliente
+    if looks_like_booking_question(text):
+        if _EMAIL_CLAIM.search(text):
+            cleaned = re.sub(
+                r"[^.!?\n]*\b(?:e-?mail|correo)[^.!?\n]*[.!?]?",
+                "",
+                text,
+                flags=re.IGNORECASE,
+            ).strip()
+            return cleaned or text
         return text
 
     if _BOOKING_CLAIM.search(text):

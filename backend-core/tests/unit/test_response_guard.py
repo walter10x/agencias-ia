@@ -27,7 +27,7 @@ def test_blocks_fake_booking_without_tool() -> None:
     reply = "¡Listo! Quedas agendado mañana a las 11 am por videollamada."
     out = enforce_tool_truth(reply, [])
     assert "agendado mañana" not in out.lower()
-    assert "agenda" in out.lower()
+    assert "todavía no" in out.lower() or "agenda" in out.lower()
 
 
 def test_blocks_soft_parking_without_tool() -> None:
@@ -37,7 +37,24 @@ def test_blocks_soft_parking_without_tool() -> None:
     )
     out = enforce_tool_truth(reply, [])
     assert "tomado nota" not in out.lower()
-    assert "confirmada" in out.lower() or "agenda" in out.lower()
+    assert "todavía no" in out.lower() or "agenda" in out.lower()
+
+
+def test_allows_confirmamos_question_without_tool() -> None:
+    """Regression: asking ¿Confirmamos…? must NOT be replaced by the fallback loop."""
+    reply = "¿Confirmamos el lunes 4 de agosto a las 11:00? Responde sí."
+    out = enforce_tool_truth(reply, [])
+    assert out == reply
+    assert "todavía no" not in out.lower()
+
+
+def test_allows_availability_offer_with_question() -> None:
+    reply = (
+        "Para el lunes 4 de agosto tengo 11:00 y 12:00. "
+        "¿Te va bien a las 11:00?"
+    )
+    out = enforce_tool_truth(reply, [])
+    assert out == reply
 
 
 def test_blocks_todo_bien_claim_without_tool() -> None:
