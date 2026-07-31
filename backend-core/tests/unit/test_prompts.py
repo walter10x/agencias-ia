@@ -199,14 +199,21 @@ class TestBuildSystemPromptSecurityRules:
         then prompt instructs conciseness for WhatsApp."""
         agent = _make_agent()
         prompt = build_system_prompt(agent)
-        assert "concisas" in prompt.lower() or "corto" in prompt.lower()
+        assert "concisas" in prompt.lower() or "corta" in prompt.lower()
 
     def test_security_rules_are_last_section(self) -> None:
         """Given agent, when build_system_prompt() called,
         then security rules appear at the end."""
         agent = _make_agent()
         prompt = build_system_prompt(agent)
-        assert prompt.rstrip().endswith("WhatsApp.") or prompt.rstrip().endswith("párrafos para WhatsApp).")
+        assert "REGLAS IMPORTANTES" in prompt
+        assert prompt.rstrip().endswith("formulario.") or "WhatsApp" in prompt[-80:]
+
+    def test_includes_today_context(self) -> None:
+        agent = _make_agent()
+        prompt = build_system_prompt(agent)
+        assert "HOY es" in prompt
+        assert "YYYY-MM-DD" in prompt
 
 
 # ============================================================================

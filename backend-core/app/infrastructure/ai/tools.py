@@ -39,7 +39,11 @@ _AGENDA_TOOL_PARAMETERS: dict[str, dict[str, Any]] = {
         "properties": {
             "fecha": {
                 "type": "string",
-                "description": "Día a consultar en formato YYYY-MM-DD, ej. 2026-07-10",
+                "description": (
+                    "Día a consultar en YYYY-MM-DD (ej. 2026-08-04). "
+                    "Si el usuario dice 'lunes' o 'mañana', convierte tú a esa fecha; "
+                    "no pidas el formato al cliente."
+                ),
             },
         },
         "required": ["fecha"],
