@@ -69,6 +69,7 @@ def _make_state(**overrides: Any) -> AgentState:
         tools=overrides.get("tools", []),
         tool_results=overrides.get("tool_results", []),
         successful_tools=overrides.get("successful_tools", []),
+        booking_tool_content=str(overrides.get("booking_tool_content", "")),
         final_response=str(overrides.get("final_response", "")),
     )
 
@@ -262,16 +263,17 @@ class TestCallLLMNode:
 
     @pytest.mark.asyncio
     async def test_passes_temperature_and_max_tokens(self) -> None:
-        """Given state, when call_llm_node called, then passes temperature and max_tokens."""
+        """Given state with tools, when call_llm_node called, then low temp for tool use."""
         llm = _MockLLMPort()
         state = _make_state(
             messages=[{"role": "user", "content": "Hi"}],
+            tools=[{"type": "function", "function": {"name": "agendar_cita"}}],
         )
 
         await call_llm_node(state, llm)
 
-        kwargs = llm.generate_calls[0]["kwargs"]
-        assert kwargs.get("temperature") == 0.7
+        kwargs = llm.generate_with_tools_calls[0]["kwargs"]
+        assert kwargs.get("temperature") == 0.2
         assert kwargs.get("max_tokens") == 1024
 
     @pytest.mark.asyncio
@@ -315,6 +317,46 @@ class TestCallLLMNode:
 
 class TestProcessToolsNode:
     """RF-AI-09: process_tools_node executes tools via n8n webhook."""
+
+    @pytest.mark.asyncio
+    async def test_executes_openai_nested_tool_call_format(self) -> None:
+        """OpenAI returns function.name / function.arguments — must execute that."""
+        state = _make_state(
+            messages=[
+                {"role": "user", "content": "Agenda cita"},
+                {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": "call_openai",
+                            "type": "function",
+                            "function": {
+                                "name": "agendar_cita",
+                                "arguments": '{"fecha_hora":"2026-08-04T11:00","nombre":"Mathias"}',
+                            },
+                        },
+                    ],
+                },
+            ],
+        )
+
+        with patch(
+            "app.infrastructure.ai.agent_graph.execute_tool",
+            new_callable=AsyncMock,
+            return_value=(
+                "Cita agendada correctamente para Mathias el 2026-08-04T11:00 "
+                "(referencia: abc-123). Confirma al cliente la fecha y hora."
+            ),
+        ) as mock_execute:
+            result = await process_tools_node(state)
+
+        mock_execute.assert_awaited_once()
+        assert mock_execute.await_args.args[0] == "agendar_cita"
+        assert "agendar_cita" in result["successful_tools"]
+        assert "referencia: abc-123" in result["booking_tool_content"].lower() or (
+            "abc-123" in result["booking_tool_content"]
+        )
 
     @pytest.mark.asyncio
     async def test_executes_tool_from_tool_calls(self) -> None:

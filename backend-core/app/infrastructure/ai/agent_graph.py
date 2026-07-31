@@ -21,6 +21,21 @@ from app.infrastructure.ai.response_guard import (
 )
 
 
+def normalize_tool_call(tc: dict[str, Any]) -> tuple[str, Any, str]:
+    """Normaliza tool_calls OpenAI (`function.name`) y formato plano (`name`).
+
+    Returns:
+        (tool_name, arguments, tool_call_id)
+    """
+    if not isinstance(tc, dict):
+        return "", {}, ""
+    tool_call_id = str(tc.get("id") or "")
+    fn = tc.get("function")
+    if isinstance(fn, dict):
+        return str(fn.get("name") or ""), fn.get("arguments") or {}, tool_call_id
+    return str(tc.get("name") or ""), tc.get("arguments") or {}, tool_call_id
+
+
 class AgentState(TypedDict):
     """Estado del agente en LangGraph."""
 
@@ -31,6 +46,7 @@ class AgentState(TypedDict):
     tools: list[dict[str, Any]]
     tool_results: list[dict[str, Any]]
     successful_tools: list[str]
+    booking_tool_content: str
     final_response: str
 
 
@@ -77,12 +93,12 @@ async def call_llm_node(state: AgentState, llm: LLMPort) -> AgentState:
         response = await llm.generate_with_tools(
             full_messages,
             tools=state["tools"],
-            temperature=0.7,
+            temperature=0.2,
             max_tokens=1024,
         )
         assistant_msg: dict[str, Any] = {
             "role": "assistant",
-            "content": response.get("content", ""),
+            "content": response.get("content") or "",
         }
         if response.get("tool_calls"):
             assistant_msg["tool_calls"] = response["tool_calls"]
@@ -91,7 +107,7 @@ async def call_llm_node(state: AgentState, llm: LLMPort) -> AgentState:
     else:
         content = await llm.generate(
             full_messages,
-            temperature=0.7,
+            temperature=0.4,
             max_tokens=1024,
         )
         state["messages"].append({"role": "assistant", "content": content})
@@ -105,24 +121,33 @@ async def process_tools_node(state: AgentState) -> AgentState:
     Lee los tool_calls del último mensaje del asistente,
     ejecuta cada tool, y guarda los resultados en tool_results.
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     messages = state.get("messages", [])
     last_msg = messages[-1] if messages else {}
     tool_calls = last_msg.get("tool_calls", []) if isinstance(last_msg, dict) else []
 
     results: list[dict[str, Any]] = []
     succeeded = list(state.get("successful_tools") or [])
-    for tc in tool_calls:
-        tool_name = tc.get("name", "")
-        tool_input = tc.get("arguments", {})
-        tool_call_id = tc.get("id", "")
+    booking_content = state.get("booking_tool_content") or ""
 
-        # Se pasan los argumentos completos (dict o string) y el contexto
-        # del tenant: las tools nativas necesitan el client_id para
-        # ejecutar los use cases scoped por negocio.
+    for tc in tool_calls:
+        tool_name, tool_input, tool_call_id = normalize_tool_call(
+            tc if isinstance(tc, dict) else {}
+        )
+
         result_content = await execute_tool(
             tool_name,
             tool_input,
             state.get("client_context", {}),
+        )
+        logger.info(
+            "tool_exec name=%s ok=%s preview=%s",
+            tool_name,
+            tool_result_succeeded(tool_name, result_content),
+            (result_content or "")[:160],
         )
 
         results.append({
@@ -133,9 +158,12 @@ async def process_tools_node(state: AgentState) -> AgentState:
         if tool_name and tool_result_succeeded(tool_name, result_content):
             if tool_name not in succeeded:
                 succeeded.append(tool_name)
+            if tool_name == "agendar_cita":
+                booking_content = result_content
 
     state["tool_results"] = results
     state["successful_tools"] = succeeded
+    state["booking_tool_content"] = booking_content
     return state
 
 
@@ -242,6 +270,7 @@ async def run_agent(
         "tools": tools,
         "tool_results": [],
         "successful_tools": [],
+        "booking_tool_content": "",
         "final_response": "",
     }
 
@@ -255,6 +284,19 @@ async def run_agent(
     for msg in reversed(messages):
         if isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("content"):
             raw = str(msg["content"])
-            return enforce_tool_truth(raw, final_state.get("successful_tools") or [])
+            return enforce_tool_truth(
+                raw,
+                final_state.get("successful_tools") or [],
+                booking_tool_content=final_state.get("booking_tool_content") or "",
+            )
+
+    # Si solo hubo tool_calls sin texto, igual confirmar si la tool guardó
+    booked = "agendar_cita" in (final_state.get("successful_tools") or [])
+    if booked:
+        return enforce_tool_truth(
+            "",
+            final_state.get("successful_tools") or [],
+            booking_tool_content=final_state.get("booking_tool_content") or "",
+        )
 
     return "Lo siento, no pude procesar tu mensaje en este momento."

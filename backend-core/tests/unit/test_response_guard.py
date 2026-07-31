@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from app.infrastructure.ai.response_guard import enforce_tool_truth, tool_result_succeeded
+from app.infrastructure.ai.response_guard import (
+    booking_confirmation_from_tool,
+    enforce_tool_truth,
+    tool_result_succeeded,
+)
 
 
 def test_tool_result_agendar_ok() -> None:
@@ -33,13 +37,39 @@ def test_blocks_soft_parking_without_tool() -> None:
     )
     out = enforce_tool_truth(reply, [])
     assert "tomado nota" not in out.lower()
-    assert "agenda" in out.lower()
+    assert "confirmada" in out.lower() or "agenda" in out.lower()
 
 
-def test_allows_booking_claim_after_successful_tool() -> None:
-    reply = "Perfecto Mathias, quedas agendado mañana a las 11."
-    out = enforce_tool_truth(reply, ["agendar_cita"])
-    assert out == reply
+def test_blocks_todo_bien_claim_without_tool() -> None:
+    reply = "Todo bien Mathias, lo he agendado para el lunes a las 11."
+    out = enforce_tool_truth(reply, [])
+    assert "lo he agendado" not in out.lower()
+    assert "todavía no" in out.lower() or "agenda" in out.lower()
+
+
+def test_deterministic_confirmation_when_tool_ok() -> None:
+    tool_content = (
+        "Cita agendada correctamente para Mathias el 2026-08-04T11:00:00+02:00 "
+        "(referencia: abc-123). Confirma al cliente la fecha y hora."
+    )
+    out = enforce_tool_truth(
+        "Bla bla inventado",
+        ["agendar_cita"],
+        booking_tool_content=tool_content,
+    )
+    assert out.startswith("✅")
+    assert "abc-123" in out
+    assert "Mathias" in out
+    assert "bla bla" not in out.lower()
+
+
+def test_booking_confirmation_parser() -> None:
+    msg = booking_confirmation_from_tool(
+        "Cita agendada correctamente para Mathias el 2026-08-04T11:00 (referencia: xyz)."
+    )
+    assert msg is not None
+    assert "Mathias" in msg
+    assert "xyz" in msg
 
 
 def test_strips_email_promise() -> None:
@@ -47,6 +77,14 @@ def test_strips_email_promise() -> None:
         "Nos vemos mañana. Revisa tu correo (mrrxt1@gmail.com) "
         "para recibir el enlace de la reunión."
     )
-    out = enforce_tool_truth(reply, ["agendar_cita"])
+    out = enforce_tool_truth(
+        reply,
+        ["agendar_cita"],
+        booking_tool_content=(
+            "Cita agendada correctamente para Mathias el 2026-08-01T11:00 "
+            "(referencia: r1)."
+        ),
+    )
     assert "correo" not in out.lower()
     assert "email" not in out.lower()
+    assert out.startswith("✅")
