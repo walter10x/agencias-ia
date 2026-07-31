@@ -49,8 +49,13 @@ def build_system_prompt(agent: Agent, client: Client | None = None) -> str:
         if "agendar_cita" in tool_names:
             parts.append(
                 "\n\nREGLA DE AGENDA (obligatoria):\n"
-                "- Cuando el usuario elija día y hora, DEBES llamar ya a "
-                "consultar_disponibilidad y/o agendar_cita. No digas solo 'ok'.\n"
+                "- Flujo: (1) preguntar día preferido → (2) consultar_disponibilidad → "
+                "(3) ofrecer 2-3 huecos → (4) cuando elija uno, REPETIR en claro "
+                "día, fecha y hora y pedir confirmación explícita "
+                "(\"¿Confirmamos el lunes 4 de agosto a las 11:00?\") → "
+                "(5) SOLO si el cliente dice que sí, llamar a agendar_cita.\n"
+                "- NUNCA llames a agendar_cita en el mismo mensaje en el que "
+                "propones el hueco; espera su confirmación.\n"
                 "- Para confirmar una cita DEBES llamar a agendar_cita y "
                 "esperar un resultado de éxito.\n"
                 "- NUNCA digas que la cita está agendada, confirmada, reservada, "
