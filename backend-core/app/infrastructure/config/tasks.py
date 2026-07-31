@@ -20,6 +20,7 @@ from app.domain.shared.errors import DomainError
 from app.domain.shared.value_objects import AgentId
 from app.infrastructure.ai.adapter_factory import get_llm_adapter
 from app.infrastructure.ai.agent_graph import run_agent
+from app.infrastructure.ai.booking_confirm import try_confirm_pending_booking
 from app.infrastructure.ai.prompts import build_system_prompt, build_user_message
 from app.infrastructure.ai.tools import agent_tools_to_openai_format
 from app.infrastructure.config.celery_app import celery_app
@@ -120,20 +121,35 @@ def process_whatsapp_message(
         if conversation is not None:
             client_context["conversation_id"] = str(conversation.id)
 
-        # --- Paso 7: Ejecutar LangGraph Agent ---
+        # --- Paso 7: Confirmar cita en duro (sí + hueco propuesto) o LLM ---
+        # Los bots serios no dejan el «sí» solo al modelo: si el bot ya preguntó
+        # «¿Confirmamos el lunes…?» y el cliente afirma, se llama agendar_cita.
         loop = asyncio.new_event_loop()
         try:
             reply = loop.run_until_complete(
-                run_agent(
-                    llm=llm,
-                    system_prompt=system_prompt,
-                    user_message=user_message,
-                    agent_config=agent_config,
+                try_confirm_pending_booking(
+                    user_text=message,
+                    history=history or [],
                     client_context=client_context,
-                    tools=tools,
-                    history=history,
                 )
             )
+            if reply:
+                logger.info(
+                    "Deterministic booking confirmation for phone=%s…",
+                    phone[:4],
+                )
+            else:
+                reply = loop.run_until_complete(
+                    run_agent(
+                        llm=llm,
+                        system_prompt=system_prompt,
+                        user_message=user_message,
+                        agent_config=agent_config,
+                        client_context=client_context,
+                        tools=tools,
+                        history=history,
+                    )
+                )
         finally:
             loop.close()
 
