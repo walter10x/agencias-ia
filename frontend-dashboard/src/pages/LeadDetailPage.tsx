@@ -54,14 +54,9 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 relative">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
-      </div>
-
+    <div className="page-shell">
       {/* Back button */}
-      <div className="relative z-10">
+      <div className="relative">
         <button
           onClick={() => navigate("/app/leads")}
           className="flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors"
@@ -72,15 +67,15 @@ export default function LeadDetailPage() {
       </div>
 
       {/* Lead ID */}
-      <div className="relative z-10">
-        <h2 className="text-2xl font-bold text-white">Lead: {id}</h2>
-        <p className="text-sm text-zinc-500 mt-1">
+      <div className="relative">
+        <h2 className="page-title">Lead: {id}</h2>
+        <p className="page-desc mt-0.5">
           Detalle y acciones sobre el lead
         </p>
       </div>
 
       {/* Actions */}
-      <div className="relative z-10 bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <h3 className="text-sm font-semibold text-white">Cambiar Estado</h3>
         <div className="flex flex-wrap gap-2">
           {["new", "contacted", "interested", "not_interested", "converted", "archived"].map(
@@ -99,7 +94,7 @@ export default function LeadDetailPage() {
       </div>
 
       {/* Send Message */}
-      <div className="relative z-10 bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <h3 className="text-sm font-semibold text-white">Enviar Mensaje Proactivo</h3>
         <div className="flex gap-2">
           <input
@@ -126,7 +121,7 @@ export default function LeadDetailPage() {
       </div>
 
       {/* Feedback History */}
-      <div className="relative z-10 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-white mb-3">
           Feedback Recibido
         </h3>

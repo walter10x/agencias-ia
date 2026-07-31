@@ -5,24 +5,13 @@ import { Search, Plus, Building2, Phone, Tag, RefreshCw, Users } from "lucide-re
 import { fetchClients, searchClientByWhatsapp, type ClientData } from "@/api/client";
 import Pagination from "@/components/Pagination";
 import ClientForm from "@/components/ClientForm";
+import PageShell, { EmptyPanel, PageHeader } from "@/components/PageShell";
 
 const PAGE_SIZE = 10;
 
-function EmptyState({ icon: Icon, msg, action }: { icon: React.ElementType; msg: string; action?: React.ReactNode }) {
-  return (
-    <div className="relative z-10 flex flex-col items-center justify-center text-center bg-zinc-900 border border-zinc-800 rounded-xl p-16 animate-scale-in">
-      <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 empty-state-icon">
-        <Icon size={28} className="text-amber-400" />
-      </div>
-      <p className="text-sm text-zinc-500 mb-4">{msg}</p>
-      {action}
-    </div>
-  );
-}
-
-const BTN = "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-xl transition-all duration-200 ease-out hover:bg-amber-400 hover:shadow-lg hover:shadow-amber-500/20 active:scale-[0.98]";
-const BTN2 = "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-xl border border-zinc-700 transition-all duration-200 ease-out hover:bg-zinc-700 hover:text-white";
-const INPUT = "w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm placeholder:text-zinc-600 transition-all duration-200 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10";
+const BTN = "inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500 text-black text-xs font-semibold rounded-lg transition-all duration-200 hover:bg-amber-400 active:scale-[0.98]";
+const BTN2 = "inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-800 text-zinc-300 text-xs font-medium rounded-lg border border-zinc-700 transition-all duration-200 hover:bg-zinc-700 hover:text-white";
+const INPUT = "w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white text-sm placeholder:text-zinc-600 transition-all duration-200 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/10";
 
 export default function ClientsPage() {
   const navigate = useNavigate();
@@ -46,60 +35,59 @@ export default function ClientsPage() {
   const searchResult = searchQuery.data?.items?.[0];
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-white tracking-tight">Clientes</h2>
-          <p className="text-sm text-zinc-500">Gestiona los negocios conectados a tu agencia</p>
-        </div>
-        <button onClick={() => { setEditingClient(undefined); setFormOpen(true); }} className={BTN}><Plus size={16} /> Nuevo Cliente</button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Clientes"
+        description="Negocios conectados a tu agencia"
+        actions={
+          <button onClick={() => { setEditingClient(undefined); setFormOpen(true); }} className={BTN}>
+            <Plus size={14} /> Nuevo
+          </button>
+        }
+      />
 
-      <div className="relative z-10 flex gap-2 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-        <div className="relative flex-1 max-w-md">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input type="text" value={whatsappSearch} onChange={(e) => setWhatsappSearch(e.target.value.replace(/\D/g, ""))} onKeyDown={(e) => e.key === "Enter" && handleSearch()} placeholder="Buscar por WhatsApp..." className={INPUT + " pl-10"} />
+      <div className="flex gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <input type="text" value={whatsappSearch} onChange={(e) => setWhatsappSearch(e.target.value.replace(/\D/g, ""))} onKeyDown={(e) => e.key === "Enter" && handleSearch()} placeholder="Buscar por WhatsApp..." className={INPUT + " pl-8"} />
         </div>
-        <button onClick={handleSearch} disabled={searchQuery.isFetching} className={BTN2}>{searchQuery.isFetching && <RefreshCw size={14} className="animate-spin" />}Buscar</button>
+        <button onClick={handleSearch} disabled={searchQuery.isFetching} className={BTN2}>{searchQuery.isFetching && <RefreshCw size={13} className="animate-spin" />}Buscar</button>
       </div>
 
       {isError && (
-        <div className="relative z-10 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400 flex items-center gap-3 animate-fade-in">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-xs text-red-400 flex items-center gap-2">
           <span>Error al cargar clientes</span>
-          <button onClick={() => clientsQuery.refetch()} className="underline hover:text-red-300 transition-colors">Reintentar</button>
+          <button onClick={() => clientsQuery.refetch()} className="underline hover:text-red-300">Reintentar</button>
         </div>
       )}
 
       {showSearch && (
-        <div className="relative z-10 animate-fade-in">
+        <div>
           {searchQuery.isFetching ? (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6"><div className="skeleton h-10 w-48" /></div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4"><div className="skeleton h-8 w-40" /></div>
           ) : searchResult ? (
             <div onClick={() => navigate(`/app/clients/${searchResult.id}`)}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 transition-all duration-300 ease-out hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20 cursor-pointer">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center"><Building2 size={18} /></div>
-                  <div><p className="text-white font-semibold">{searchResult.name}</p><p className="text-sm text-zinc-500">{searchResult.whatsapp_number}</p></div>
+              className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 hover:border-zinc-700 cursor-pointer transition-colors">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0"><Building2 size={15} /></div>
+                  <div className="min-w-0"><p className="text-sm text-white font-medium truncate">{searchResult.name}</p><p className="text-xs text-zinc-500">{searchResult.whatsapp_number}</p></div>
                 </div>
-                {searchResult.is_active ? <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span> : <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">Inactivo</span>}
+                {searchResult.is_active ? <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span> : <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700">Inactivo</span>}
               </div>
             </div>
           ) : searchQuery.isFetched ? (
-            <div className="flex flex-col items-center justify-center text-center bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-              <Search size={24} className="text-zinc-600 mb-2 empty-state-icon" />
-              <p className="text-sm text-zinc-500">No se encontró ningún cliente con ese WhatsApp</p>
-            </div>
+            <EmptyPanel icon={Search}>No se encontró ningún cliente con ese WhatsApp</EmptyPanel>
           ) : null}
         </div>
       )}
 
       {isLoading && (
-        <div className="relative z-10 space-y-3">
+        <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4" style={{ animationDelay: `${i * 0.06}s` }}>
-              <div className="flex items-center gap-4">
-                <div className="skeleton w-10 h-10 rounded-lg" /><div className="space-y-2 flex-1"><div className="skeleton h-4 w-36" /><div className="skeleton h-3 w-24" /></div><div className="skeleton h-6 w-16 rounded-md" />
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+              <div className="flex items-center gap-3">
+                <div className="skeleton w-8 h-8 rounded-lg" /><div className="space-y-1.5 flex-1"><div className="skeleton h-3.5 w-32" /><div className="skeleton h-2.5 w-20" /></div><div className="skeleton h-5 w-14 rounded-md" />
               </div>
             </div>
           ))}
@@ -107,34 +95,34 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !isError && clients.length > 0 && !showSearch && (
-        <div className="relative z-10 space-y-2">
+        <div className="space-y-1.5">
           {clients.map((client) => (
             <div key={client.id} onClick={() => navigate(`/app/clients/${client.id}`)}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 transition-all duration-300 ease-out hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20 cursor-pointer stagger-item">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110">
-                    <Building2 size={18} />
+              className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 hover:border-zinc-700 cursor-pointer transition-colors stagger-item">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                    <Building2 size={15} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-white font-semibold truncate">{client.name}</p>
-                    <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5">
-                      <span className="flex items-center gap-1"><Phone size={10} /> {client.whatsapp_number}</span>
-                      <span className="flex items-center gap-1"><Tag size={10} /> {client.business_type}</span>
+                    <p className="text-sm text-white font-medium truncate">{client.name}</p>
+                    <div className="flex items-center gap-2.5 text-[11px] text-zinc-500 mt-0.5">
+                      <span className="flex items-center gap-1"><Phone size={9} /> {client.whatsapp_number}</span>
+                      <span className="flex items-center gap-1"><Tag size={9} /> {client.business_type}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {client.status === "pending" && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">Pendiente</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">Pendiente</span>
                   )}
                   {client.whatsapp_connected && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">WA</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">WA</span>
                   )}
                   {client.is_active ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Activo</span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">Inactivo</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700">Inactivo</span>
                   )}
                 </div>
               </div>
@@ -144,16 +132,19 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !isError && clients.length === 0 && !showSearch && (
-        <EmptyState icon={Users} msg="Crea tu primer cliente para empezar a configurar agentes IA." action={
-          <button onClick={() => { setEditingClient(undefined); setFormOpen(true); }} className={BTN}><Plus size={16} /> Crear primer cliente</button>
-        } />
+        <EmptyPanel
+          icon={Users}
+          action={<button onClick={() => { setEditingClient(undefined); setFormOpen(true); }} className={BTN}><Plus size={14} /> Crear primer cliente</button>}
+        >
+          Crea tu primer cliente para empezar a configurar agentes IA.
+        </EmptyPanel>
       )}
 
       {!isLoading && clients.length > 0 && !showSearch && (
-        <div className="relative z-10 animate-fade-in"><Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} /></div>
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
       )}
 
       <ClientForm isOpen={formOpen} onClose={closeForm} client={editingClient} onSuccess={() => setShowSearch(false)} />
-    </div>
+    </PageShell>
   );
 }

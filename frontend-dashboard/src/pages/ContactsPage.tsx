@@ -4,13 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ContactRound, MessageSquare, Phone, Search } from "lucide-react";
 import { fetchContacts } from "@/api/contact";
 import TenantSelect, { useTenantClientId } from "@/components/TenantSelect";
+import PageShell, { EmptyPanel, PageHeader } from "@/components/PageShell";
 
 const CARD =
-  "bg-zinc-900 border border-zinc-800 rounded-xl transition-all duration-300 ease-out hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20";
+  "bg-zinc-900 border border-zinc-800 rounded-xl transition-all duration-200 hover:border-zinc-700";
 const BADGE =
-  "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium border";
+  "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border";
 const FILTER =
-  "px-3 py-1.5 text-xs font-medium rounded-lg border transition-all";
+  "px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all";
 
 const FILTERS: { label: string; days: number | null }[] = [
   { label: "Todos", days: null },
@@ -61,19 +62,17 @@ export default function ContactsPage() {
   const items = query.data?.items ?? [];
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
-      <div className="space-y-1 animate-fade-in">
-        <h2 className="text-2xl font-bold text-white tracking-tight">Contactos</h2>
-        <p className="text-sm text-zinc-500">
-          Personas que escriben o agendan (no confundir con Clientes = negocios).
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Contactos"
+        description="Personas que escriben o agendan (no confundir con Clientes = negocios)."
+      />
 
       {isSuperadmin && (
         <TenantSelect value={clientId} onChange={setClientId} />
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {FILTERS.map((f) => {
           const active = inactiveDays === f.days;
           return (
@@ -95,25 +94,22 @@ export default function ContactsPage() {
       </div>
 
       {!ready && isSuperadmin && (
-        <div className={CARD + " flex flex-col items-center justify-center py-16 text-center"}>
-          <p className="text-white font-medium mb-1">Selecciona un negocio</p>
-          <p className="text-sm text-zinc-500">Para ver sus contactos</p>
-        </div>
+        <EmptyPanel title="Selecciona un negocio">Para ver sus contactos</EmptyPanel>
       )}
 
       {ready && query.isLoading && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className={CARD + " p-4"}>
-              <div className="skeleton h-5 w-40 mb-2" />
-              <div className="skeleton h-3 w-28" />
+            <div key={i} className={CARD + " p-3"}>
+              <div className="skeleton h-4 w-36 mb-1.5" />
+              <div className="skeleton h-2.5 w-24" />
             </div>
           ))}
         </div>
       )}
 
       {ready && query.error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-xs text-red-400">
           No se pudieron cargar los contactos.{" "}
           <button className="underline" onClick={() => query.refetch()}>
             Reintentar
@@ -122,21 +118,18 @@ export default function ContactsPage() {
       )}
 
       {ready && !query.isLoading && !query.error && items.length === 0 && (
-        <div className={CARD + " flex flex-col items-center justify-center py-16 text-center"}>
-          <ContactRound size={36} className="text-zinc-600 mb-4" />
-          <p className="text-white font-medium mb-1">
-            {inactiveDays ? "Nadie inactivo con ese filtro" : "Aún no hay contactos"}
-          </p>
-          <p className="text-sm text-zinc-500 max-w-sm">
-            {inactiveDays
-              ? "Prueba otro periodo o vuelve a Todos."
-              : "Aparecerán cuando alguien escriba por WhatsApp, sea lead o tenga una cita."}
-          </p>
-        </div>
+        <EmptyPanel
+          icon={ContactRound}
+          title={inactiveDays ? "Nadie inactivo con ese filtro" : "Aún no hay contactos"}
+        >
+          {inactiveDays
+            ? "Prueba otro periodo o vuelve a Todos."
+            : "Aparecerán cuando alguien escriba por WhatsApp, sea lead o tenga una cita."}
+        </EmptyPanel>
       )}
 
       {ready && !query.isLoading && items.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {items.map((c) => (
             <button
               key={c.phone}
@@ -148,24 +141,24 @@ export default function ContactsPage() {
                     : "";
                 navigate(`/app/contacts/${encodeURIComponent(c.phone)}${q}`);
               }}
-              className={CARD + " w-full p-4 text-left cursor-pointer"}
+              className={CARD + " w-full p-3 text-left cursor-pointer"}
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
-                    <ContactRound size={18} />
+                <div className="min-w-0 flex items-start gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                    <ContactRound size={15} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-white font-semibold truncate">{c.display_name}</p>
-                    <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
-                      <Phone size={10} /> {c.phone}
+                    <p className="text-sm text-white font-medium truncate">{c.display_name}</p>
+                    <p className="text-[11px] text-zinc-500 flex items-center gap-1 mt-0.5">
+                      <Phone size={9} /> {c.phone}
                     </p>
-                    <p className="text-xs text-zinc-600 mt-1">
+                    <p className="text-[11px] text-zinc-600 mt-0.5">
                       Última actividad: {formatWhen(c.last_activity_at)}
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 justify-end shrink-0">
+                <div className="flex flex-wrap gap-1 justify-end shrink-0">
                   {c.inactive_days != null && c.inactive_days >= 30 && (
                     <span className={`${BADGE} bg-orange-500/10 text-orange-400 border-orange-500/20`}>
                       {c.inactive_days}d inactivo
@@ -178,12 +171,12 @@ export default function ContactsPage() {
                   )}
                   {c.has_conversation && (
                     <span className={`${BADGE} bg-emerald-500/10 text-emerald-400 border-emerald-500/20`}>
-                      <MessageSquare size={10} /> Chat
+                      <MessageSquare size={9} /> Chat
                     </span>
                   )}
                   {c.has_appointments && (
                     <span className={`${BADGE} bg-blue-500/10 text-blue-400 border-blue-500/20`}>
-                      <CalendarDays size={10} /> Cita
+                      <CalendarDays size={9} /> Cita
                     </span>
                   )}
                 </div>
@@ -194,11 +187,11 @@ export default function ContactsPage() {
       )}
 
       {ready && !query.isLoading && items.length > 0 && (
-        <p className="text-xs text-zinc-600 flex items-center gap-1">
-          <Search size={12} /> {query.data?.total ?? items.length} contacto
+        <p className="text-[11px] text-zinc-600 flex items-center gap-1">
+          <Search size={11} /> {query.data?.total ?? items.length} contacto
           {(query.data?.total ?? items.length) === 1 ? "" : "s"}
         </p>
       )}
-    </div>
+    </PageShell>
   );
 }

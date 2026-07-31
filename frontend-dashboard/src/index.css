@@ -82,3 +82,60 @@
 @utility empty-state-icon {
   @apply transition-all duration-300;
 }
+
+@utility glass-card {
+  @apply bg-zinc-900/90 border border-zinc-800 backdrop-blur-md;
+}
+
+@utility icon-box {
+  @apply flex h-8 w-8 items-center justify-center rounded-lg;
+}
+
+@utility icon-box-lg {
+  @apply flex h-9 w-9 items-center justify-center rounded-xl;
+}
+
+/* Panel layout: compact + centered */
+@utility page-shell {
+  @apply mx-auto w-full max-w-5xl space-y-4 px-4 py-4 sm:px-5 sm:py-5;
+}
+
+@utility page-shell-narrow {
+  @apply mx-auto w-full max-w-2xl space-y-4 px-4 py-4 sm:px-5 sm:py-5;
+}
+
+@utility page-title {
+  @apply text-lg font-semibold tracking-tight text-white;
+}
+
+@utility page-desc {
+  @apply text-xs leading-relaxed text-zinc-500;
+}
+
+@utility empty-panel {
+  @apply flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-8 text-center;
+}
+
+@utility modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm;
+}
+
+@utility modal-panel {
+  @apply w-full max-w-sm max-h-[85vh] overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl animate-scale-in;
+}
+
+@utility modal-panel-md {
+  @apply w-full max-w-md max-h-[85vh] overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl animate-scale-in;
+}
+
+@utility modal-header {
+  @apply sticky top-0 z-10 flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-3;
+}
+
+@utility modal-body {
+  @apply space-y-3 p-4;
+}
+
+@utility auth-card {
+  @apply relative z-10 w-full max-w-sm space-y-5 rounded-xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl;
+}

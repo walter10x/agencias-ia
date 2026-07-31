@@ -114,13 +114,8 @@ export default function ConversationDetailPage() {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
-      </div>
-
       {/* Header */}
-      <div className="relative z-10 bg-zinc-950/80 backdrop-blur-sm border-b border-zinc-800 px-6 py-4 flex items-center gap-4">
+      <div className="mx-auto w-full max-w-3xl bg-zinc-950/80 backdrop-blur-sm border-b border-zinc-800 px-4 py-2.5 flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-lg hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
@@ -146,7 +141,7 @@ export default function ConversationDetailPage() {
 
       {/* Error */}
       {isError && (
-        <div className="relative z-10 bg-red-500/10 border border-red-500/20 rounded-xl mx-6 mt-6 px-4 py-3 text-sm text-red-400 flex items-center gap-3">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl mx-6 mt-6 px-4 py-3 text-sm text-red-400 flex items-center gap-3">
           <span>Conversación no encontrada</span>
           <button onClick={() => navigate(-1)} className="underline hover:text-red-300">Volver</button>
         </div>
@@ -157,7 +152,7 @@ export default function ConversationDetailPage() {
 
       {/* Messages Area */}
       {!isLoading && !isError && (
-        <div className="relative z-10 flex-1 overflow-y-auto px-6 py-4 space-y-1">
+        <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 py-3 space-y-1">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-sm text-zinc-500">No hay mensajes en esta conversación</p>
@@ -174,17 +169,17 @@ export default function ConversationDetailPage() {
       )}
 
       {/* Input Footer (placeholder) */}
-      <div className="relative z-10 bg-zinc-950 border-t border-zinc-800 px-6 py-4">
+      <div className="mx-auto w-full max-w-3xl bg-zinc-950 border-t border-zinc-800 px-4 py-3">
         <div className="flex items-center gap-3">
           <input
             type="text"
             placeholder="Escribe un mensaje..."
             disabled
-            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white text-sm placeholder:text-zinc-600 outline-none opacity-50 cursor-not-allowed"
+            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-white text-sm placeholder:text-zinc-600 outline-none opacity-50 cursor-not-allowed"
           />
           <button
             disabled
-            className="p-3 bg-amber-500/30 text-zinc-500 rounded-xl cursor-not-allowed"
+            className="p-2.5 bg-amber-500/30 text-zinc-500 rounded-xl cursor-not-allowed"
           >
             <Send size={18} />
           </button>

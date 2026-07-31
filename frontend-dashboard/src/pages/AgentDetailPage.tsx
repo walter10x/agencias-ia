@@ -56,11 +56,11 @@ export default function AgentDetailPage() {
 
   if (agentQuery.isLoading) {
     return (
-      <div className="p-6 space-y-6 relative">
+      <div className="page-shell">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
         </div>
-        <div className="relative z-10 space-y-4">
+        <div className="space-y-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 animate-pulse space-y-4">
             <div className="h-6 w-48 bg-zinc-800 rounded" />
             <div className="h-4 w-64 bg-zinc-800 rounded" />
@@ -79,9 +79,9 @@ export default function AgentDetailPage() {
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
         </div>
-        <div className="relative z-10 bg-zinc-900 border border-zinc-800 rounded-xl p-16 text-center">
-          <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4 stroke-[1.5]" />
-          <h3 className="text-lg font-semibold text-white mb-2">Agente no encontrado</h3>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl empty-panel">
+          <AlertTriangle size={48} className="text-amber-500 mx-auto mb-3 stroke-[1.5]" />
+          <h3 className="text-sm font-semibold text-white mb-2">Agente no encontrado</h3>
           <p className="text-sm text-zinc-500 mb-6">El agente que buscas no existe o fue eliminado.</p>
           <button
             onClick={() => navigate("/app/agents")}
@@ -97,14 +97,9 @@ export default function AgentDetailPage() {
   const client = clientQuery.data;
 
   return (
-    <div className="p-6 space-y-6 relative">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
-      </div>
-
+    <div className="page-shell">
       {/* Back + Agent Info */}
-      <div className="relative z-10 space-y-4">
+      <div className="space-y-4">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
@@ -112,7 +107,7 @@ export default function AgentDetailPage() {
           <ArrowLeft size={16} /> Volver
         </button>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-start justify-between">
             <div className="space-y-3">
               <div className="flex items-center gap-3">
@@ -163,7 +158,7 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Personality */}
-      <div className="relative z-10 space-y-3">
+      <div className="space-y-3">
         <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Personalidad</h3>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
           <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">{agent.personality}</p>
@@ -171,7 +166,7 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Tools */}
-      <div className="relative z-10 space-y-3">
+      <div className="space-y-3">
         <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
           Tools {agent.tools.length > 0 && `(${agent.tools.length})`}
         </h3>
@@ -203,7 +198,7 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Knowledge Base */}
-      <div className="relative z-10 space-y-3">
+      <div className="space-y-3">
         <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Knowledge Base</h3>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
           {agent.knowledge_base_refs.length === 0 ? (
@@ -222,7 +217,7 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Danger Zone */}
-      <div className="relative z-10 space-y-3">
+      <div className="space-y-3">
         <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider flex items-center gap-2">
           <ShieldAlert size={14} /> Zona peligrosa
         </h3>
@@ -249,10 +244,10 @@ export default function AgentDetailPage() {
 
       {/* Deactivate Confirmation Modal */}
       {confirmDeactivate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]">
+        <div className="modal-overlay">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm mx-4 shadow-2xl p-6 animate-[fadeIn_0.15s_ease-out]">
-            <AlertTriangle size={32} className="text-amber-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white text-center mb-2">¿Desactivar agente?</h3>
+            <AlertTriangle size={20} className="text-amber-500 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-white text-center mb-2">¿Desactivar agente?</h3>
             <p className="text-sm text-zinc-400 text-center mb-6">
               El agente dejará de responder mensajes. Puedes reactivarlo después.
             </p>
@@ -278,10 +273,10 @@ export default function AgentDetailPage() {
 
       {/* Delete Confirmation Modal */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]">
+        <div className="modal-overlay">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm mx-4 shadow-2xl p-6 animate-[fadeIn_0.15s_ease-out]">
-            <ShieldAlert size={32} className="text-red-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white text-center mb-2">¿Eliminar permanentemente?</h3>
+            <ShieldAlert size={20} className="text-red-400 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-white text-center mb-2">¿Eliminar permanentemente?</h3>
             <p className="text-sm text-zinc-400 text-center mb-6">
               Esta acción no se puede deshacer. El agente y toda su configuración se perderán para siempre.
             </p>

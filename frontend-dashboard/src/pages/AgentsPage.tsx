@@ -27,25 +27,20 @@ export default function AgentsPage() {
   const selectedClient = clients.find((c) => c.id === selectedClientId);
 
   return (
-    <div className="p-6 space-y-6 relative">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
-      </div>
-
+    <div className="page-shell">
       {/* Header */}
-      <div className="relative z-10">
-        <h2 className="text-2xl font-bold text-white">Agentes IA</h2>
-        <p className="text-sm text-zinc-500 mt-1">Selecciona un cliente para ver sus agentes</p>
+      <div className="relative">
+        <h2 className="page-title">Agentes IA</h2>
+        <p className="page-desc mt-0.5">Selecciona un cliente para ver sus agentes</p>
       </div>
 
       {/* Client Selector */}
-      <div className="relative z-10">
+      <div className="relative">
         {clientsQuery.isLoading ? (
-          <div className="h-12 bg-zinc-900 border border-zinc-800 rounded-xl animate-pulse" />
+          <div className="h-9 bg-zinc-900 border border-zinc-800 rounded-xl animate-pulse" />
         ) : clients.length === 0 ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-            <Building2 size={32} className="text-zinc-600 mx-auto mb-4 stroke-[1.5]" />
+          <div className="empty-panel">
+            <Building2 size={20} className="text-zinc-600 mx-auto mb-3 stroke-[1.5]" />
             <p className="text-sm text-zinc-400 mb-4">Crea un cliente primero para poder crear agentes</p>
             <button
               onClick={() => navigate("/app/clients")}
@@ -75,7 +70,7 @@ export default function AgentsPage() {
 
       {/* Agents */}
       {selectedClientId && (
-        <div className="relative z-10 space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-white">
               {selectedClient?.name}
@@ -108,8 +103,8 @@ export default function AgentsPage() {
           )}
 
           {!agentsQuery.isLoading && !agentsQuery.isError && agents.length === 0 && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-              <Bot size={32} className="text-zinc-600 mx-auto mb-4 stroke-[1.5]" />
+            <div className="empty-panel">
+              <Bot size={20} className="text-zinc-600 mx-auto mb-3 stroke-[1.5]" />
               <p className="text-sm text-zinc-500 mb-4">Este cliente no tiene agentes</p>
               <button
                 onClick={() => setFormOpen(true)}

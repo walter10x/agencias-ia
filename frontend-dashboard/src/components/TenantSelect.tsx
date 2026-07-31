@@ -4,7 +4,7 @@ import { fetchClients, type ClientData } from "@/api/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const SELECT =
-  "w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-white text-sm focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors";
+  "w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors";
 
 interface TenantSelectProps {
   value: string;
@@ -35,7 +35,7 @@ export default function TenantSelect({ value, onChange }: TenantSelectProps) {
 
   if (clientsQuery.isLoading) {
     return (
-      <div className="h-10 w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-lg animate-pulse" />
+      <div className="h-9 w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-lg animate-pulse" />
     );
   }
 

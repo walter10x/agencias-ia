@@ -22,6 +22,7 @@ import {
 import AppointmentForm from "@/components/AppointmentForm";
 import TenantSelect, { useTenantClientId } from "@/components/TenantSelect";
 import { useToast } from "@/components/Toast";
+import PageShell, { EmptyPanel, PageHeader } from "@/components/PageShell";
 
 // ---------- helpers de fecha ----------
 
@@ -136,41 +137,28 @@ export default function AppointmentsPage() {
   const grouped = groupByDay(items);
 
   return (
-    <div className="p-6 space-y-6 relative">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Agenda"
+        description="Citas del negocio (superadmin: elige el tenant abajo)"
+        actions={
+          <button
+            onClick={() => {
+              setRescheduleTarget(null);
+              setFormOpen(true);
+            }}
+            disabled={!ready}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-black text-xs font-semibold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50"
+          >
+            <Plus size={14} />
+            Nueva cita
+          </button>
+        }
+      />
 
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Agenda</h2>
-          <p className="text-sm text-zinc-500 mt-1">
-            Citas del negocio (superadmin: elige el tenant abajo)
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setRescheduleTarget(null);
-            setFormOpen(true);
-          }}
-          disabled={!ready}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50"
-        >
-          <Plus size={16} />
-          Nueva cita
-        </button>
-      </div>
+      {isSuperadmin && <TenantSelect value={clientId} onChange={setClientId} />}
 
-      {isSuperadmin && (
-        <div className="relative z-10">
-          <TenantSelect value={clientId} onChange={setClientId} />
-        </div>
-      )}
-
-      {/* Controls */}
-      <div className="relative z-10 flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         {/* View toggle */}
         <div className="inline-flex bg-zinc-900 border border-zinc-800 rounded-lg p-1">
           <button
@@ -215,7 +203,7 @@ export default function AppointmentsPage() {
 
       {/* Week navigation */}
       {view === "week" && (
-        <div className="relative z-10 flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-3">
           <button
             onClick={() => setWeekAnchor(addDays(weekAnchor, -7))}
             className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
@@ -243,19 +231,17 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* Loading */}
       {appointmentsQuery.isLoading && (
-        <div className="relative z-10 space-y-3">
+        <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 animate-pulse h-20" />
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 animate-pulse h-16" />
           ))}
         </div>
       )}
 
-      {/* Error */}
       {appointmentsQuery.isError && (
-        <div className="relative z-10 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400 flex items-center justify-between gap-3">
-          <span>No se pudieron cargar las citas. Revisa tu conexión.</span>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 text-xs text-red-400 flex items-center justify-between gap-2">
+          <span>No se pudieron cargar las citas.</span>
           <button
             onClick={() => appointmentsQuery.refetch()}
             className="underline hover:text-red-300 shrink-0"
@@ -265,39 +251,36 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* Empty */}
       {!appointmentsQuery.isLoading && !appointmentsQuery.isError && items.length === 0 && (
-        <div className="relative z-10 bg-zinc-900 border border-zinc-800 rounded-xl p-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
-            <Calendar size={32} className="text-amber-500 stroke-[1.5]" />
-          </div>
-          <h3 className="text-lg font-semibold text-white mb-2">Sin citas</h3>
-          <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
-            {statusFilter
-              ? "No hay citas con este filtro."
-              : "Aún no tienes citas agendadas. El agente las creará automáticamente por WhatsApp, o puedes añadirlas a mano."}
-          </p>
-          <button
-            onClick={() => {
-              setRescheduleTarget(null);
-              setFormOpen(true);
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors"
-          >
-            <Plus size={16} /> Nueva cita
-          </button>
-        </div>
+        <EmptyPanel
+          icon={Calendar}
+          title="Sin citas"
+          action={
+            <button
+              onClick={() => {
+                setRescheduleTarget(null);
+                setFormOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-black text-xs font-semibold rounded-lg hover:bg-amber-400 transition-colors"
+            >
+              <Plus size={14} /> Nueva cita
+            </button>
+          }
+        >
+          {statusFilter
+            ? "No hay citas con este filtro."
+            : "El agente las creará por WhatsApp, o puedes añadirlas a mano."}
+        </EmptyPanel>
       )}
 
-      {/* List view */}
       {!appointmentsQuery.isLoading && !appointmentsQuery.isError && items.length > 0 && view === "list" && (
-        <div className="relative z-10 space-y-6">
+        <div className="space-y-4">
           {grouped.map(([day, dayItems]) => (
             <div key={day}>
-              <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-2 capitalize">
+              <h3 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-1.5 capitalize">
                 {dayHeading(dayItems[0].starts_at)}
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {dayItems.map((appt) => (
                   <AppointmentRow
                     key={appt.id}
@@ -315,9 +298,8 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* Week view */}
       {!appointmentsQuery.isLoading && !appointmentsQuery.isError && view === "week" && (
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
           {Array.from({ length: 7 }).map((_, i) => {
             const day = addDays(weekAnchor, i);
             const key = ymd(day);
@@ -328,16 +310,16 @@ export default function AppointmentsPage() {
             return (
               <div
                 key={key}
-                className={`bg-zinc-900 border rounded-xl p-3 min-h-[120px] ${
+                className={`bg-zinc-900 border rounded-xl p-2.5 min-h-[100px] ${
                   isToday ? "border-amber-500/40" : "border-zinc-800"
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-xs font-semibold ${isToday ? "text-amber-400" : "text-zinc-400"}`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className={`text-[11px] font-semibold ${isToday ? "text-amber-400" : "text-zinc-400"}`}>
                     {DAY_LABELS[i]} {day.getDate()}
                   </span>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {dayItems.length === 0 && (
                     <p className="text-[11px] text-zinc-600">—</p>
                   )}
@@ -348,13 +330,13 @@ export default function AppointmentsPage() {
                         setRescheduleTarget(appt);
                         setFormOpen(true);
                       }}
-                      className="w-full text-left bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 hover:border-amber-500/40 transition-colors"
+                      className="w-full text-left bg-zinc-950 border border-zinc-800 rounded-md px-1.5 py-1 hover:border-amber-500/40 transition-colors"
                     >
-                      <div className="flex items-center gap-1 text-[11px] text-white font-medium">
-                        <Clock size={10} className="text-amber-400/70" />
+                      <div className="flex items-center gap-1 text-[10px] text-white font-medium">
+                        <Clock size={9} className="text-amber-400/70" />
                         {timeLabel(appt.starts_at)}
                       </div>
-                      <p className="text-[11px] text-zinc-400 truncate">
+                      <p className="text-[10px] text-zinc-400 truncate">
                         {appt.contact_name || appt.contact_phone}
                       </p>
                     </button>
@@ -366,7 +348,6 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* Create / reschedule modal */}
       <AppointmentForm
         isOpen={formOpen}
         onClose={() => {
@@ -377,22 +358,21 @@ export default function AppointmentsPage() {
         clientId={isSuperadmin ? clientId : undefined}
       />
 
-      {/* Cancel confirmation */}
       {cancelTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm mx-4 shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-              <h3 className="text-lg font-semibold text-white">Cancelar cita</h3>
+        <div className="modal-overlay">
+          <div className="modal-panel">
+            <div className="modal-header">
+              <h3 className="text-sm font-semibold text-white">Cancelar cita</h3>
               <button
                 onClick={() => setCancelTarget(null)}
                 className="text-zinc-500 hover:text-white transition-colors"
                 aria-label="Cerrar"
               >
-                <X size={20} />
+                <X size={16} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-zinc-400">
+            <div className="modal-body">
+              <p className="text-xs text-zinc-400">
                 ¿Seguro que quieres cancelar la cita de{" "}
                 <span className="text-white font-medium">
                   {cancelTarget.contact_name || cancelTarget.contact_phone}
@@ -408,19 +388,19 @@ export default function AppointmentsPage() {
                 </span>
                 ?
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setCancelTarget(null)}
-                  className="flex-1 px-4 py-2.5 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors"
+                  className="flex-1 px-3 py-2 bg-zinc-800 text-zinc-300 text-xs font-medium rounded-lg border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors"
                 >
                   Volver
                 </button>
                 <button
                   onClick={() => cancelMutation.mutate(cancelTarget.id)}
                   disabled={cancelMutation.isPending}
-                  className="flex-1 px-4 py-2.5 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-400 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  className="flex-1 px-3 py-2 bg-red-500 text-white text-xs font-semibold rounded-lg hover:bg-red-400 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
                 >
-                  {cancelMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                  {cancelMutation.isPending && <Loader2 size={13} className="animate-spin" />}
                   Cancelar cita
                 </button>
               </div>
@@ -428,7 +408,7 @@ export default function AppointmentsPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -447,41 +427,41 @@ function AppointmentRow({
   const isCancelled = appt.status === "cancelled";
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex items-center gap-4 flex-wrap">
-      <div className="flex items-center gap-2 text-white font-semibold min-w-[120px]">
-        <Clock size={14} className="text-amber-400" />
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-1.5 text-sm text-white font-semibold min-w-[110px]">
+        <Clock size={12} className="text-amber-400" />
         {timeLabel(appt.starts_at)}
         <span className="text-zinc-600">–</span>
-        <span className="text-zinc-400 font-normal">{timeLabel(appt.ends_at)}</span>
+        <span className="text-zinc-400 font-normal text-xs">{timeLabel(appt.ends_at)}</span>
       </div>
 
-      <div className="flex-1 min-w-[160px]">
+      <div className="flex-1 min-w-[140px]">
         <div className="flex items-center gap-1.5 text-sm text-white">
-          <User size={13} className="text-zinc-500" />
+          <User size={12} className="text-zinc-500" />
           {appt.contact_name || "Sin nombre"}
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-zinc-500 mt-0.5">
-          <Phone size={12} />
+        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-0.5">
+          <Phone size={10} />
           {appt.contact_phone}
         </div>
-        {appt.notes && <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{appt.notes}</p>}
+        {appt.notes && <p className="text-[11px] text-zinc-500 mt-0.5 line-clamp-1">{appt.notes}</p>}
       </div>
 
-      <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${meta.className}`}>
+      <span className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${meta.className}`}>
         {meta.label}
       </span>
 
       {!isCancelled && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={onReschedule}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 hover:text-white hover:bg-zinc-700 transition-colors"
+            className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-zinc-800 text-zinc-300 border border-zinc-700 hover:text-white hover:bg-zinc-700 transition-colors"
           >
             Reprogramar
           </button>
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 text-xs font-medium rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-500/5 transition-colors"
+            className="px-2.5 py-1 text-[11px] font-medium rounded-md text-zinc-400 hover:text-red-400 hover:bg-red-500/5 transition-colors"
           >
             Cancelar
           </button>

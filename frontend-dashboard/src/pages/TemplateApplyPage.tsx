@@ -70,7 +70,7 @@ export default function TemplateApplyPage() {
   // Loading state
   if (templatesQuery.isLoading) {
     return (
-      <div className="p-6 space-y-6">
+      <div className="page-shell">
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 animate-pulse space-y-4">
           <div className="h-5 w-48 bg-zinc-800 rounded" />
           <div className="h-16 w-16 bg-zinc-800 rounded-2xl" />
@@ -86,9 +86,9 @@ export default function TemplateApplyPage() {
   if (!template) {
     return (
       <div className="p-6">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-16 text-center">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl empty-panel">
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-6">
-            <AlertCircle size={32} className="text-red-400" />
+            <AlertCircle size={20} className="text-red-400" />
           </div>
           <h3 className="text-lg font-semibold text-white mb-2">Plantilla no encontrada</h3>
           <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
@@ -107,13 +107,9 @@ export default function TemplateApplyPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 relative">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
-      </div>
-
+    <div className="page-shell">
       {/* Breadcrumb */}
-      <div className="relative z-10 flex items-center gap-2 text-sm text-zinc-500">
+      <div className="flex items-center gap-2 text-sm text-zinc-500">
         <button
           onClick={() => navigate("/app/templates")}
           className="hover:text-zinc-300 transition-colors"
@@ -126,7 +122,7 @@ export default function TemplateApplyPage() {
         <span className="text-amber-500">Aplicar</span>
       </div>
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left: Preview */}
         <div className="lg:col-span-3 space-y-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
@@ -248,8 +244,8 @@ export default function TemplateApplyPage() {
 
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <div className="modal-overlay">
+          <div className="modal-panel modal-body">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">Confirmar aplicación</h3>
               <button
@@ -303,9 +299,9 @@ export default function TemplateApplyPage() {
 
       {/* Success Modal */}
       {successData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl text-center">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-4">
+        <div className="modal-overlay">
+          <div className="modal-panel modal-body text-center">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 size={36} className="text-emerald-400" />
             </div>
 

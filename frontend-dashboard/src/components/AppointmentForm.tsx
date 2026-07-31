@@ -120,10 +120,10 @@ export default function AppointmentForm({
   const slotMinutes = availabilityQuery.data?.slot_duration_minutes;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md mx-4 shadow-2xl animate-[fadeIn_0.15s_ease-out] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-          <h3 className="text-lg font-semibold text-white">
+    <div className="modal-overlay">
+      <div className="modal-panel">
+        <div className="modal-header">
+          <h3 className="text-sm font-semibold text-white">
             {isReschedule ? "Reprogramar cita" : "Nueva cita"}
           </h3>
           <button
@@ -131,13 +131,13 @@ export default function AppointmentForm({
             className="text-zinc-500 hover:text-white transition-colors"
             aria-label="Cerrar"
           >
-            <X size={20} />
+            <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="modal-body">
           {apiError && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs text-red-400">
               {apiError}
             </div>
           )}
@@ -162,7 +162,7 @@ export default function AppointmentForm({
           {!isReschedule && (
             <>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+                <label className="block text-xs font-medium text-zinc-400 mb-1">
                   Nombre del contacto
                 </label>
                 <input
@@ -176,7 +176,7 @@ export default function AppointmentForm({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+                <label className="block text-xs font-medium text-zinc-400 mb-1">
                   Teléfono
                 </label>
                 <input
@@ -194,7 +194,7 @@ export default function AppointmentForm({
           )}
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
               Fecha
             </label>
             <input
@@ -210,7 +210,7 @@ export default function AppointmentForm({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-400 mb-1">
               Hora disponible
               {slotMinutes ? (
                 <span className="text-zinc-600"> · citas de {slotMinutes} min</span>
@@ -226,7 +226,7 @@ export default function AppointmentForm({
             )}
 
             {availabilityQuery.isError && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400 flex items-center justify-between gap-3">
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs text-red-400 flex items-center justify-between gap-3">
                 <span>No se pudo cargar la disponibilidad</span>
                 <button
                   type="button"
@@ -271,7 +271,7 @@ export default function AppointmentForm({
 
           {!isReschedule && (
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+              <label className="block text-xs font-medium text-zinc-400 mb-1">
                 Notas
               </label>
               <textarea
@@ -285,18 +285,18 @@ export default function AppointmentForm({
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors"
+              className="flex-1 px-3 py-2 bg-zinc-800 text-zinc-300 text-xs font-medium rounded-lg border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="flex-1 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              className="flex-1 px-3 py-2 bg-amber-500 text-black text-xs font-semibold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
               {mutation.isPending && <Loader2 size={14} className="animate-spin" />}
               {isReschedule ? "Reprogramar" : "Crear cita"}

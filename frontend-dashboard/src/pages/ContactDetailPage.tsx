@@ -18,13 +18,13 @@ import { useToast } from "@/components/Toast";
 
 const CARD = "bg-zinc-900 border border-zinc-800 rounded-xl";
 const BTN =
-  "inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-xl hover:bg-amber-400 transition-all disabled:opacity-50";
+  "inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500 text-black text-xs font-semibold rounded-lg hover:bg-amber-400 transition-all disabled:opacity-50";
 const BTN2 =
-  "inline-flex items-center justify-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-xl border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-all";
+  "inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 text-zinc-300 text-xs font-medium rounded-lg border border-zinc-700 hover:bg-zinc-700 hover:text-white transition-all";
 const INPUT =
-  "w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10";
+  "w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/10";
 const BADGE =
-  "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-medium border";
+  "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border";
 
 function formatWhen(iso: string | null | undefined) {
   if (!iso) return "—";
@@ -116,7 +116,7 @@ export default function ContactDetailPage() {
 
   if (query.isLoading) {
     return (
-      <div className="p-6 lg:p-8 space-y-4">
+      <div className="page-shell">
         <div className={CARD + " p-6 space-y-3"}>
           <div className="skeleton h-8 w-48" />
           <div className="skeleton h-4 w-32" />
@@ -127,11 +127,11 @@ export default function ContactDetailPage() {
 
   if (query.error || !query.data) {
     return (
-      <div className="p-6 lg:p-8">
-        <div className={CARD + " flex flex-col items-center py-16 text-center"}>
-          <AlertTriangle size={40} className="text-amber-400 mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">Contacto no encontrado</h3>
-          <p className="text-sm text-zinc-500 mb-6">No hay lead, chat ni cita para este teléfono.</p>
+      <div className="page-shell">
+        <div className={CARD + " flex flex-col items-center py-8 text-center"}>
+          <AlertTriangle size={22} className="text-amber-400 mb-3" />
+          <h3 className="text-sm font-semibold text-white mb-1">Contacto no encontrado</h3>
+          <p className="text-xs text-zinc-500 mb-4">No hay lead, chat ni cita para este teléfono.</p>
           <button type="button" onClick={() => navigate("/app/contacts")} className={BTN2}>
             <ArrowLeft size={14} /> Volver a Contactos
           </button>
@@ -143,7 +143,7 @@ export default function ContactDetailPage() {
   const c = query.data;
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="page-shell">
       <button
         type="button"
         onClick={() => navigate("/app/contacts")}

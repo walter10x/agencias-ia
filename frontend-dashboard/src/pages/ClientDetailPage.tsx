@@ -104,9 +104,9 @@ export default function ClientDetailPage() {
 
   useEffect(() => { if (landing) { setLandingSlug(landing.landing_slug ?? ""); setLandingTitle(landing.landing_title); setLandingActive(landing.landing_active); setLandingColor(landing.landing_primary_color); } }, [landing]);
 
-  if (clientQuery.isLoading) return <div className="p-6 lg:p-8 space-y-6"><div className={CARD + " p-8 space-y-4"}><div className="skeleton h-10 w-48" /><div className="skeleton h-5 w-64" /><div className="skeleton h-5 w-36" /></div></div>;
+  if (clientQuery.isLoading) return <div className="page-shell"><div className={CARD + " p-8 space-y-4"}><div className="skeleton h-10 w-48" /><div className="skeleton h-5 w-64" /><div className="skeleton h-5 w-36" /></div></div>;
   if (clientQuery.error || !client) return (
-    <div className="p-6 lg:p-8">
+    <div className="page-shell">
       <div className="flex flex-col items-center justify-center text-center bg-zinc-900 border border-zinc-800 rounded-xl py-16 animate-scale-in">
         <AlertTriangle size={48} className="text-amber-400 mb-4 empty-state-icon" /><h3 className="text-lg font-semibold text-white mb-2">Cliente no encontrado</h3><p className="text-sm text-zinc-500 mb-6">El cliente que buscas no existe o fue eliminado.</p><button onClick={() => navigate("/app/clients")} className={BTN}>Volver a Clientes</button>
       </div>
@@ -114,7 +114,7 @@ export default function ClientDetailPage() {
   );
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div className="page-shell">
       <div className="space-y-4 animate-fade-in">
         <button onClick={() => navigate("/app/clients")} className="inline-flex items-center gap-1.5 px-3 py-2 text-zinc-400 text-sm font-medium rounded-lg transition-all duration-200 hover:bg-zinc-800/50 hover:text-white"><ArrowLeft size={14} /> Volver</button>
         <div className={CARD + " !p-6"}>
@@ -170,10 +170,10 @@ export default function ClientDetailPage() {
           <div className="space-y-4">
             {emailStatsQuery.isLoading ? <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{Array.from({length:4}).map((_,i)=><div key={i} className={CARD+" p-4"}><div className="skeleton h-8 w-16 mb-2"/><div className="skeleton h-3 w-20"/></div>)}</div>
             : emailStats ? <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className={CARD+" p-4"}><p className="text-2xl font-bold text-white">{emailStats.total_sent}</p><p className="text-xs text-zinc-500 mt-1">Enviados</p></div>
-              <div className={CARD+" p-4"}><p className="text-2xl font-bold text-emerald-400">{emailStats.total_opened}</p><p className="text-xs text-zinc-500 mt-1">Abiertos ({emailStats.open_rate}%)</p></div>
-              <div className={CARD+" p-4"}><p className="text-2xl font-bold text-blue-400">{emailStats.total_clicked}</p><p className="text-xs text-zinc-500 mt-1">Clicks ({emailStats.click_rate}%)</p></div>
-              <div className={CARD+" p-4"}><p className="text-2xl font-bold text-red-400">{emailStats.total_bounced}</p><p className="text-xs text-zinc-500 mt-1">Rebotados</p></div>
+              <div className={CARD+" p-4"}><p className="page-title">{emailStats.total_sent}</p><p className="text-xs text-zinc-500 mt-1">Enviados</p></div>
+              <div className={CARD+" p-4"}><p className="text-lg font-bold text-emerald-400">{emailStats.total_opened}</p><p className="text-xs text-zinc-500 mt-1">Abiertos ({emailStats.open_rate}%)</p></div>
+              <div className={CARD+" p-4"}><p className="text-lg font-bold text-blue-400">{emailStats.total_clicked}</p><p className="text-xs text-zinc-500 mt-1">Clicks ({emailStats.click_rate}%)</p></div>
+              <div className={CARD+" p-4"}><p className="text-lg font-bold text-red-400">{emailStats.total_bounced}</p><p className="text-xs text-zinc-500 mt-1">Rebotados</p></div>
             </div> : null}
             <div className={CARD+" p-6 space-y-4"}>
               <h4 className="text-white font-semibold flex items-center gap-2"><Send size={16} className="text-amber-400"/>Enviar email</h4>
@@ -198,7 +198,7 @@ export default function ClientDetailPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between"><h3 className="text-lg font-bold text-white tracking-tight">Agentes IA {agents.length>0&&`(${agents.length})`}</h3><button onClick={()=>setAgentFormOpen(true)} className={BTN}><Plus size={14}/>Nuevo Agente</button></div>
               {agentsQuery.isLoading?<div className="space-y-3">{Array.from({length:3}).map((_,i)=><div key={i} className={CARD+" p-4"}><div className="skeleton h-5 w-36"/></div>)}</div>
-              :agents.length===0?<div className={CARD+" flex flex-col items-center justify-center py-12"}><Bot size={32} className="text-zinc-600 mb-4 empty-state-icon"/><p className="text-sm text-zinc-500 mb-4">Este cliente no tiene agentes</p><button onClick={()=>setAgentFormOpen(true)} className={BTN2}>Crear primer agente</button></div>
+              :agents.length===0?<div className={CARD+" flex flex-col items-center justify-center py-12"}><Bot size={20} className="text-zinc-600 mb-4 empty-state-icon"/><p className="text-sm text-zinc-500 mb-4">Este cliente no tiene agentes</p><button onClick={()=>setAgentFormOpen(true)} className={BTN2}>Crear primer agente</button></div>
               :<div className="space-y-2">{agents.map(agent=><div key={agent.id} onClick={()=>navigate(`/app/agents/${agent.id}`)} className={CARD+" p-4 cursor-pointer"}><div className="flex items-center justify-between"><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0"><Bot size={18}/></div><div className="min-w-0"><p className="text-white font-medium truncate">{agent.name}</p><p className="text-xs text-zinc-500 truncate">{agent.personality.slice(0,80)}</p></div></div>{agent.is_active?<span className={BADGE_OK}>Activo</span>:<span className={BADGE_MUT}>Inactivo</span>}</div></div>)}</div>}
             </div>
             <BusinessHoursEditor clientId={client.id} />
@@ -208,7 +208,7 @@ export default function ClientDetailPage() {
           <div className="space-y-4">
             {landingQuery.isLoading?<div className={CARD+" p-6 space-y-4"}><div className="skeleton h-5 w-32"/><div className="skeleton h-10 w-full"/></div>
             :landing?<>
-              <div className="grid grid-cols-2 gap-3"><div className={CARD+" p-4"}><p className="text-2xl font-bold text-white">{landing.leads_count}</p><p className="text-xs text-zinc-500 mt-1">Leads captados</p></div><div className={CARD+" p-4"}><p className="text-2xl font-bold text-white">{landing.landing_slug?"Activa":"—"}</p><p className="text-xs text-zinc-500 mt-1">Estado</p></div></div>
+              <div className="grid grid-cols-2 gap-3"><div className={CARD+" p-4"}><p className="page-title">{landing.leads_count}</p><p className="text-xs text-zinc-500 mt-1">Leads captados</p></div><div className={CARD+" p-4"}><p className="page-title">{landing.landing_slug?"Activa":"—"}</p><p className="text-xs text-zinc-500 mt-1">Estado</p></div></div>
               <div className={CARD+" p-6 space-y-4"}>
                 <div className="flex items-center justify-between"><div><h4 className="text-white font-semibold">Landing activa</h4><p className="text-xs text-zinc-500">Mostrar landing page pública</p></div><button onClick={()=>{setLandingActive(!landingActive);setLandingDirty(true)}} className={`w-12 h-6 rounded-full transition-colors relative ${landingActive?"bg-emerald-500":"bg-zinc-700"}`}><span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${landingActive?"translate-x-6":"translate-x-0.5"}`}/></button></div>
                 <div><label className="block text-sm text-zinc-400 mb-1">URL Slug</label><input type="text" value={landingSlug} onChange={e=>{setLandingSlug(e.target.value);setLandingDirty(true)}} placeholder="mi-negocio" maxLength={100} className={INPUT}/>{landingSlug&&<p className="mt-1 text-xs text-zinc-600">landing/{landingSlug}</p>}</div>
@@ -216,7 +216,7 @@ export default function ClientDetailPage() {
                 <div><label className="block text-sm text-zinc-400 mb-1">Color primario</label><div className="flex items-center gap-3"><input type="color" value={landingColor} onChange={e=>{setLandingColor(e.target.value);setLandingDirty(true)}} className="w-10 h-10 rounded-lg border border-zinc-700 cursor-pointer bg-transparent"/><input type="text" value={landingColor} onChange={e=>{setLandingColor(e.target.value);setLandingDirty(true)}} maxLength={7} className={INPUT+" flex-1 font-mono"}/></div></div>
                 <button onClick={()=>landingMutation.mutate({})} disabled={landingMutation.isPending||!landingDirty} className={BTN+" w-full"}>{landingMutation.isPending?<><Loader2 size={16} className="animate-spin"/>Guardando...</>:"Guardar cambios"}</button>
               </div>
-            </>:<div className={CARD+" flex flex-col items-center justify-center py-12"}><Globe size={32} className="text-zinc-600 mb-4 empty-state-icon"/><p className="text-sm text-zinc-500">No se pudo cargar la landing</p></div>}
+            </>:<div className={CARD+" flex flex-col items-center justify-center py-12"}><Globe size={20} className="text-zinc-600 mb-4 empty-state-icon"/><p className="text-sm text-zinc-500">No se pudo cargar la landing</p></div>}
           </div>
         )}
       </div>
@@ -224,7 +224,7 @@ export default function ClientDetailPage() {
       <ClientForm isOpen={editOpen} onClose={()=>setEditOpen(false)} client={client}/>
       <AgentForm isOpen={agentFormOpen} onClose={()=>setAgentFormOpen(false)} clientId={client.id}/>
 
-      {confirmDeactivate&&<div className="fixed inset-0 z-50 flex items-center justify-center animate-scale-in"><div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setConfirmDeactivate(false)}/><div className="bg-zinc-900/95 backdrop-blur-md border border-zinc-800/50 rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6"><AlertTriangle size={32} className="text-amber-400 mx-auto mb-4"/><h3 className="text-lg font-semibold text-white text-center mb-2">¿Desactivar cliente?</h3><p className="text-sm text-zinc-400 text-center mb-6">Sus agentes también se desactivarán.</p><div className="flex gap-3"><button onClick={()=>setConfirmDeactivate(false)} className={BTN2+" flex-1"}>Cancelar</button><button onClick={()=>deactivateMutation.mutate()} disabled={deactivateMutation.isPending} className={BTND+" flex-1"}>{deactivateMutation.isPending&&<Loader2 size={16} className="animate-spin"/>}Desactivar</button></div></div></div>}
+      {confirmDeactivate&&<div className="modal-overlay animate-scale-in"><div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setConfirmDeactivate(false)}/><div className="modal-panel p-4"><AlertTriangle size={20} className="text-amber-400 mx-auto mb-3"/><h3 className="text-sm font-semibold text-white text-center mb-1.5">¿Desactivar cliente?</h3><p className="text-xs text-zinc-400 text-center mb-4">Sus agentes también se desactivarán.</p><div className="flex gap-3"><button onClick={()=>setConfirmDeactivate(false)} className={BTN2+" flex-1"}>Cancelar</button><button onClick={()=>deactivateMutation.mutate()} disabled={deactivateMutation.isPending} className={BTND+" flex-1"}>{deactivateMutation.isPending&&<Loader2 size={16} className="animate-spin"/>}Desactivar</button></div></div></div>}
     </div>
   );
 }

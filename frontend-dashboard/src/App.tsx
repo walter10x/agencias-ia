@@ -52,12 +52,12 @@ function AppLayout() {
         <Sidebar />
       </div>
 
-      <div className="lg:hidden absolute top-4 left-4 z-50">
+      <div className="lg:hidden absolute top-3 left-3 z-50">
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2.5 glass-card rounded-xl shadow-lg"
+          className="p-2 glass-card rounded-lg shadow-lg"
         >
-          {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
       </div>
 

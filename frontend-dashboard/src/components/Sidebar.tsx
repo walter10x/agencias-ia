@@ -23,7 +23,7 @@ function NavItem({ to, icon: Icon, label, onCloseMobile, isCollapsed }: NavItemP
       onClick={onCloseMobile}
       title={isCollapsed ? label : undefined}
       className={({ isActive }) =>
-        `flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"} py-2.5 rounded-xl transition-all duration-200 group relative
+        `flex items-center ${isCollapsed ? "justify-center px-1.5" : "gap-2.5 px-2.5"} py-2 rounded-lg transition-all duration-200 group relative
         ${isActive
           ? "bg-amber-500/10 text-amber-400 font-semibold"
           : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"}`
@@ -32,14 +32,14 @@ function NavItem({ to, icon: Icon, label, onCloseMobile, isCollapsed }: NavItemP
       {({ isActive }) => (
         <>
           <div className={`relative ${isCollapsed ? "" : ""}`}>
-            <Icon size={isCollapsed ? 20 : 18} className={`stroke-[1.5] transition-transform duration-200 group-hover:scale-110 ${isActive ? "" : ""}`} />
+            <Icon size={isCollapsed ? 18 : 16} className={`stroke-[1.5] transition-transform duration-200 group-hover:scale-110 ${isActive ? "" : ""}`} />
             {isActive && !isCollapsed && (
-              <span className="absolute -left-3 top-1/2 -translate-y-1/2 w-1 h-5 bg-amber-500 rounded-r-full" />
+              <span className="absolute -left-2.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-amber-500 rounded-r-full" />
             )}
           </div>
-          {!isCollapsed && <span className="text-sm truncate">{label}</span>}
+          {!isCollapsed && <span className="text-[13px] truncate">{label}</span>}
           {isCollapsed && (
-            <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-zinc-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-zinc-700 shadow-xl transition-all duration-200 -translate-x-1 group-hover:translate-x-0">
+            <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-zinc-700 shadow-xl transition-all duration-200 -translate-x-1 group-hover:translate-x-0">
               {label}
             </div>
           )}
@@ -66,12 +66,12 @@ export default function Sidebar({ className = "", onCloseMobile }: SidebarProps)
 
   return (
     <div
-      className={`${isCollapsed ? "w-20" : "w-64"} h-full flex flex-col transition-all duration-300 ease-in-out bg-zinc-950/80 backdrop-blur-xl border-r border-zinc-800/50 ${className}`}
+      className={`${isCollapsed ? "w-14" : "w-52"} h-full flex flex-col transition-all duration-300 ease-in-out bg-zinc-950/80 backdrop-blur-xl border-r border-zinc-800/50 ${className}`}
     >
       {/* Logo / Brand */}
-      <div className={`p-4 flex items-center ${isCollapsed ? "justify-center" : "gap-3"} h-[73px] shrink-0`}>
-        <div className="icon-box-lg bg-amber-500/15 ring-1 ring-amber-500/20">
-          <span className="text-lg font-black text-amber-400">A</span>
+      <div className={`px-3 py-3 flex items-center ${isCollapsed ? "justify-center" : "gap-2.5"} h-14 shrink-0`}>
+        <div className="icon-box bg-amber-500/15 ring-1 ring-amber-500/20">
+          <span className="text-sm font-black text-amber-400">A</span>
         </div>
         {!isCollapsed && (
           <div className="overflow-hidden animate-fade-in">
@@ -79,14 +79,14 @@ export default function Sidebar({ className = "", onCloseMobile }: SidebarProps)
               Agencia <span className="text-amber-400">IA</span>
             </h1>
             <span className="text-[10px] text-zinc-500 tracking-wider uppercase block">
-              Panel de Control
+              Panel
             </span>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto py-2 px-2 space-y-4 scrollbar-hide">
         {/* Principal */}
         <div className="space-y-1">
           {!isCollapsed && (
@@ -158,14 +158,14 @@ export default function Sidebar({ className = "", onCloseMobile }: SidebarProps)
       </div>
 
       {/* User Footer */}
-      <div className={`p-3 ${isCollapsed ? "" : ""}`}>
-        <div className={`flex items-center ${isCollapsed ? "flex-col gap-1" : "gap-3 mb-2"} px-2 py-2 bg-zinc-900/50 rounded-xl border border-zinc-800/50`}>
-          <div className="w-9 h-9 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold ring-2 ring-zinc-800/50 shrink-0">
+      <div className="p-2">
+        <div className={`flex items-center ${isCollapsed ? "flex-col gap-1" : "gap-2 mb-1.5"} px-1.5 py-1.5 bg-zinc-900/50 rounded-lg border border-zinc-800/50`}>
+          <div className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px] font-bold ring-1 ring-zinc-800/50 shrink-0">
             {initials}
           </div>
           {!isCollapsed && (
             <div className="flex-1 min-w-0 animate-fade-in">
-              <p className="text-sm font-medium text-white truncate">{user?.name || "Usuario"}</p>
+              <p className="text-xs font-medium text-white truncate">{user?.name || "Usuario"}</p>
               <p className="text-[10px] text-zinc-500 truncate">{user?.email || ""}</p>
             </div>
           )}
@@ -173,7 +173,7 @@ export default function Sidebar({ className = "", onCloseMobile }: SidebarProps)
         <button
           onClick={logout}
           title={isCollapsed ? "Cerrar Sesión" : undefined}
-          className={`w-full flex items-center ${isCollapsed ? "justify-center p-2" : "gap-2 px-3 py-2"} text-xs font-medium rounded-lg transition-all duration-200 text-zinc-400 hover:text-red-400 hover:bg-red-500/5`}
+          className={`w-full flex items-center ${isCollapsed ? "justify-center p-1.5" : "gap-2 px-2 py-1.5"} text-xs font-medium rounded-lg transition-all duration-200 text-zinc-400 hover:text-red-400 hover:bg-red-500/5`}
         >
           <LogOut size={14} className="stroke-[1.5]" />
           {!isCollapsed && "Cerrar Sesión"}

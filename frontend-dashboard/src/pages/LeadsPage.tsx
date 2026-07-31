@@ -21,24 +21,19 @@ export default function LeadsPage() {
   const stats: LeadStatsData | null = statsQuery.data ?? null;
 
   return (
-    <div className="p-6 space-y-6 relative">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[100px]" />
-      </div>
-
+    <div className="page-shell">
       {/* Header */}
-      <div className="relative z-10 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Leads</h2>
-          <p className="text-sm text-zinc-500 mt-1">
+          <h2 className="page-title">Leads</h2>
+          <p className="page-desc mt-0.5">
             Pipeline de prospección automática
           </p>
         </div>
       </div>
 
       {/* Client ID Input */}
-      <div className="relative z-10 flex gap-2">
+      <div className="flex gap-2">
         <div className="relative flex-1 max-w-md">
           <Target
             size={14}
@@ -56,14 +51,14 @@ export default function LeadsPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
                 <Users size={18} className="text-amber-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{stats.total}</p>
+                <p className="page-title">{stats.total}</p>
                 <p className="text-xs text-zinc-500">Total Leads</p>
               </div>
             </div>
@@ -75,7 +70,7 @@ export default function LeadsPage() {
                 <TrendingUp size={18} className="text-emerald-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">
+                <p className="page-title">
                   {stats.conversion_rate.toFixed(1)}%
                 </p>
                 <p className="text-xs text-zinc-500">Conversión</p>
@@ -89,7 +84,7 @@ export default function LeadsPage() {
                 <MessageSquare size={18} className="text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">
+                <p className="page-title">
                   {stats.new_today}
                 </p>
                 <p className="text-xs text-zinc-500">Nuevos Hoy</p>
@@ -103,7 +98,7 @@ export default function LeadsPage() {
                 <Star size={18} className="text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">
+                <p className="page-title">
                   {stats.avg_score.toFixed(1)}
                 </p>
                 <p className="text-xs text-zinc-500">Score Promedio</p>
@@ -115,7 +110,7 @@ export default function LeadsPage() {
 
       {/* Status Breakdown */}
       {stats && (
-        <div className="relative z-10 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-white mb-3">
             Leads por Estado
           </h3>
@@ -137,9 +132,9 @@ export default function LeadsPage() {
 
       {/* Empty */}
       {!stats && statsQuery.isFetched && (
-        <div className="relative z-10 bg-zinc-900 border border-zinc-800 rounded-xl p-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
-            <Users size={32} className="text-amber-500 stroke-[1.5]" />
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl empty-panel">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
+            <Users size={20} className="text-amber-500 stroke-[1.5]" />
           </div>
           <h3 className="text-lg font-semibold text-white mb-2">
             Sin datos de leads
@@ -153,7 +148,7 @@ export default function LeadsPage() {
 
       {/* Loading */}
       {statsQuery.isLoading && (
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}

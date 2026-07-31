@@ -114,46 +114,46 @@ export default function AgentForm({ isOpen, onClose, clientId, agent, onSuccess 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto shadow-2xl animate-[fadeIn_0.15s_ease-out]">
-        <div className="sticky top-0 bg-zinc-900 flex items-center justify-between px-6 py-4 border-b border-zinc-800 rounded-t-2xl">
-          <h3 className="text-lg font-semibold text-white">
+    <div className="modal-overlay">
+      <div className="modal-panel-md">
+        <div className="modal-header rounded-t-xl">
+          <h3 className="text-sm font-semibold text-white">
             {isEdit ? "Editar agente" : "Nuevo agente"}
           </h3>
           <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-            <X size={20} />
+            <X size={16} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="modal-body">
           {apiError && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs text-red-400">
               {apiError}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Nombre</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nombre del agente"
               maxLength={200}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-zinc-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm placeholder:text-zinc-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors"
             />
             {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Personalidad</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Personalidad</label>
             <textarea
               value={personality}
               onChange={(e) => setPersonality(e.target.value)}
               placeholder="Eres un asistente amable que..."
-              rows={4}
+              rows={3}
               maxLength={5000}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-zinc-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors resize-y"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm placeholder:text-zinc-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors resize-y"
             />
             {errors.personality && <p className="text-xs text-red-400 mt-1">{errors.personality}</p>}
           </div>
@@ -208,28 +208,28 @@ export default function AgentForm({ isOpen, onClose, clientId, agent, onSuccess 
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Knowledge Base Refs (opcional)</label>
+            <label className="block text-xs font-medium text-zinc-400 mb-1">Knowledge Base Refs (opcional)</label>
             <input
               type="text"
               value={kbRefs}
               onChange={(e) => setKbRefs(e.target.value)}
               placeholder="kb-precios, kb-faq-general"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-zinc-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm placeholder:text-zinc-600 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 outline-none transition-colors"
             />
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors border border-zinc-700"
+              className="flex-1 px-3 py-2 bg-zinc-800 text-zinc-300 text-xs font-medium rounded-lg hover:bg-zinc-700 transition-colors border border-zinc-700"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="flex-1 px-4 py-2.5 bg-amber-500 text-black text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-3 py-2 bg-amber-500 text-black text-xs font-semibold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {mutation.isPending && <Loader2 size={16} className="animate-spin" />}
               {isEdit ? "Guardar cambios" : "Crear agente"}
