@@ -175,6 +175,33 @@ class TestYCloudWebhook:
         assert kwargs["text"] == "Hola prueba"
         assert kwargs["push_name"] == "Walter"
 
+    def test_normalizes_to_without_plus(self, ycloud_app: FastAPI) -> None:
+        client = TestClient(ycloud_app)
+        payload = {
+            "type": "whatsapp.inbound_message.received",
+            "whatsappInboundMessage": {
+                "from": "34602438307",
+                "to": "34682743315",
+                "type": "text",
+                "text": {"body": "Hola"},
+            },
+        }
+        with (
+            patch("app.infrastructure.whatsapp.ycloud_webhook.get_settings") as gs,
+            patch(
+                "app.infrastructure.whatsapp.ycloud_webhook.process_whatsapp_message",
+                new_callable=AsyncMock,
+                return_value=WebhookResponse(status="queued"),
+            ) as proc,
+        ):
+            gs.return_value = MagicMock(ycloud_webhook_secret="")
+            resp = client.post("/webhook/ycloud", json=payload)
+
+        assert resp.status_code == 200
+        kwargs = proc.await_args.kwargs
+        assert kwargs["phone"] == "+34602438307"
+        assert kwargs["phone_number_id"] == "+34682743315"
+
     def test_rejects_bad_signature_when_secret_set(self, ycloud_app: FastAPI) -> None:
         client = TestClient(ycloud_app)
         body = {"type": "whatsapp.inbound_message.received"}

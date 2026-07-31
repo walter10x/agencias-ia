@@ -40,6 +40,19 @@ def test_blocks_soft_parking_without_tool() -> None:
     assert "todavía no" in out.lower() or "agenda" in out.lower()
 
 
+def test_blocks_preferencia_soft_park_even_with_trailing_question() -> None:
+    """Regression 2026-07-31: soft-park + '¿algo más?' se colaba por el '?'. """
+    reply = (
+        "Perfecto, Mathias. Tengo **lunes 3 de agosto a las 10:00** como tu preferencia. "
+        "El equipo te contactará por WhatsApp para confirmar la cita. "
+        "¿Hay algo más en lo que pueda ayudarte?"
+    )
+    out = enforce_tool_truth(reply, [])
+    assert "preferencia" not in out.lower()
+    assert "contactará" not in out.lower()
+    assert "todavía no" in out.lower() or "agenda" in out.lower()
+
+
 def test_allows_confirmamos_question_without_tool() -> None:
     """Regression: asking ¿Confirmamos…? must NOT be replaced by the fallback loop."""
     reply = "¿Confirmamos el lunes 4 de agosto a las 11:00? Responde sí."

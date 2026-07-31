@@ -17,6 +17,7 @@ def _make_mock_chain() -> MagicMock:
     """Create a mock that returns itself for all chained method calls."""
     chain = MagicMock()
     chain.eq.return_value = chain
+    chain.in_.return_value = chain
     chain.order.return_value = chain
     chain.limit.return_value = chain
     chain.offset.return_value = chain

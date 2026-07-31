@@ -127,16 +127,21 @@ class SupabaseClientRepository(ClientRepository, BusinessScheduleRepository):
         Usado para el routing multi-tenant del webhook entrante: Meta
         envía `metadata.phone_number_id` en cada payload, y ese valor
         identifica de forma única el número (y por tanto el tenant)
-        que recibió el mensaje.
+        que recibió el mensaje. También acepta el E.164 de YCloud (`to`),
+        con o sin prefijo '+'.
         """
-        if not phone_number_id or not phone_number_id.strip():
+        from app.domain.shared.phone import phone_id_lookup_candidates
+
+        candidates = phone_id_lookup_candidates(phone_number_id)
+        if not candidates:
             return None
 
         try:
             result = await asyncio.to_thread(
                 lambda: self._db.table(self.TABLE)
                 .select("*")
-                .eq("phone_number_id", phone_number_id.strip())
+                .in_("phone_number_id", candidates)
+                .limit(1)
                 .execute()
             )
         except Exception as exc:

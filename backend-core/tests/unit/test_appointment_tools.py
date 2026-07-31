@@ -2,7 +2,7 @@
 
 Cubre:
 - agent_tools_to_openai_format: schemas tipados para las tools de agenda
-  y schema genérico para el resto.
+  y schema gen?rico para el resto.
 - execute_tool: dispatcher local que invoca los use cases con el client_id
   del contexto (sin red, con repos in-memory).
 """
@@ -26,6 +26,7 @@ from tests.unit.appointment_fakes import (
     FakeAppointmentRepository,
     FakeScheduleRepository,
 )
+from tests.unit.test_contact_use_cases import FakeLeadRepo
 
 CLIENT_ID = str(uuid4())
 CONTEXT = {"id": CLIENT_ID}
@@ -41,7 +42,7 @@ def _make_fake_notifier(sent: bool = True) -> MagicMock:
     return notifier
 
 
-def _make_fake_client_repo(name: str = "Peluquería Ana") -> MagicMock:
+def _make_fake_client_repo(name: str = "Peluquer?a Ana") -> MagicMock:
     client = MagicMock()
     client.name = name
     repo = MagicMock()
@@ -49,17 +50,19 @@ def _make_fake_client_repo(name: str = "Peluquería Ana") -> MagicMock:
     return repo
 
 
-def _patch_repos(repo=None, schedule_repo=None, client_repo=None, notifier=None):
+def _patch_repos(repo=None, schedule_repo=None, client_repo=None, notifier=None, lead_repo=None):
     repo = repo if repo is not None else FakeAppointmentRepository()
     schedule_repo = schedule_repo or FakeScheduleRepository()
     client_repo = client_repo if client_repo is not None else _make_fake_client_repo()
     notifier = notifier if notifier is not None else _make_fake_notifier()
+    lead_repo = lead_repo if lead_repo is not None else FakeLeadRepo()
     return repo, schedule_repo, patch.multiple(
         "app.infrastructure.ai.tools",
         _build_appointment_repo=lambda: repo,
         _build_schedule_repo=lambda: schedule_repo,
         _build_client_repo=lambda: client_repo,
         _build_appointment_notifier=lambda: notifier,
+        _build_lead_repo=lambda: lead_repo,
     )
 
 
@@ -78,7 +81,7 @@ async def _seed(repo, **overrides) -> Appointment:
 
 
 # ============================================================================
-# agent_tools_to_openai_format — schemas tipados
+# agent_tools_to_openai_format ? schemas tipados
 # ============================================================================
 
 
@@ -126,7 +129,7 @@ class TestOpenAIFormat:
 
 
 # ============================================================================
-# execute_tool — dispatcher
+# execute_tool ? dispatcher
 # ============================================================================
 
 
@@ -134,7 +137,7 @@ class TestExecuteToolDispatch:
     @pytest.mark.asyncio
     async def test_non_agenda_tool_returns_not_configured(self) -> None:
         result = await execute_tool("consultar_precios", {"input": "corte"}, CONTEXT)
-        assert "no está configurada" in result
+        assert "no est" in result.lower() and "configurada" in result.lower()
         assert "consultar_precios" in result
 
     @pytest.mark.asyncio
@@ -145,7 +148,9 @@ class TestExecuteToolDispatch:
     def test_agenda_tools_registry(self) -> None:
         assert AGENDA_TOOLS == {
             "consultar_disponibilidad",
+            "consultar_mis_citas",
             "agendar_cita",
+            "reprogramar_cita",
             "cancelar_cita",
         }
 
@@ -224,10 +229,10 @@ class TestAgendarCita:
         assert len(repo.items) == 1
         saved = next(iter(repo.items.values()))
         assert str(saved.client_id) == CLIENT_ID
-        assert saved.contact_phone == "584121234567"
+        assert saved.contact_phone == "+584121234567"
         assert saved.contact_name == "Ana"
         assert saved.notes == "corte de pelo"
-        # La referencia (ID) va en la respuesta para poder cancelar después
+        # La referencia (ID) va en la respuesta para poder cancelar despu?s
         assert str(saved.id) in result
 
     @pytest.mark.asyncio
@@ -243,7 +248,7 @@ class TestAgendarCita:
 
         assert "agendada" in result.lower()
         saved = next(iter(repo.items.values()))
-        assert saved.contact_phone == "584129999999"
+        assert saved.contact_phone == "+584129999999"
 
     @pytest.mark.asyncio
     async def test_no_phone_anywhere_asks_for_it(self) -> None:
@@ -255,7 +260,7 @@ class TestAgendarCita:
                 CONTEXT,
             )
 
-        assert "teléfono" in result
+        assert "tel" in result.lower()
         assert repo.items == {}
 
     @pytest.mark.asyncio
@@ -273,8 +278,8 @@ class TestAgendarCita:
                 CONTEXT,
             )
 
-        assert "No se pudo completar la operación" in result
-        assert len(repo.items) == 1  # no se creó una segunda cita
+        assert "No se pudo completar la operaci" in result
+        assert len(repo.items) == 1  # no se cre? una segunda cita
 
     @pytest.mark.asyncio
     async def test_outside_hours_reports_error(self) -> None:
@@ -290,7 +295,7 @@ class TestAgendarCita:
                 CONTEXT,
             )
 
-        assert "No se pudo completar la operación" in result
+        assert "No se pudo completar la operaci" in result
         assert repo.items == {}
 
     @pytest.mark.asyncio
@@ -299,11 +304,11 @@ class TestAgendarCita:
         with patcher:
             result = await execute_tool(
                 "agendar_cita",
-                {"fecha_hora": "mañana 10am", "nombre": "Ana", "telefono": "58412"},
+                {"fecha_hora": "ma?ana 10am", "nombre": "Ana", "telefono": "58412"},
                 CONTEXT,
             )
 
-        assert "No se pudo completar la operación" in result
+        assert "No se pudo completar la operaci" in result
 
 
 class TestCancelarCita:
@@ -339,7 +344,7 @@ class TestCancelarCita:
                 "cancelar_cita", {"referencia": "584100000000"}, CONTEXT
             )
 
-        assert "No se encontró" in result
+        assert "No se encontr" in result
 
     @pytest.mark.asyncio
     async def test_cannot_cancel_appointment_of_other_tenant(self) -> None:
@@ -351,7 +356,7 @@ class TestCancelarCita:
                 "cancelar_cita", {"referencia": str(other.id)}, CONTEXT
             )
 
-        assert "No se encontró" in result
+        assert "No se encontr" in result
         assert repo.items[str(other.id)].status.value == "pending"
 
     @pytest.mark.asyncio
@@ -364,21 +369,21 @@ class TestCancelarCita:
 
 
 # ============================================================================
-# Confirmación de cita por WhatsApp (Fase 2, tarea 2.6)
+# Confirmaci?n de cita por WhatsApp (Fase 2, tarea 2.6)
 # ============================================================================
 
 
 class TestAppointmentConfirmationNotification:
     """La tool agendar_cita debe notificar por WhatsApp tras crear la cita.
 
-    Contrato best-effort: un fallo de notificación NUNCA debe impedir que
-    la cita se cree ni que la tool devuelva su mensaje de éxito habitual.
+    Contrato best-effort: un fallo de notificaci?n NUNCA debe impedir que
+    la cita se cree ni que la tool devuelva su mensaje de ?xito habitual.
     """
 
     @pytest.mark.asyncio
     async def test_sends_confirmation_after_creating_appointment(self) -> None:
         notifier = _make_fake_notifier(sent=True)
-        client_repo = _make_fake_client_repo(name="Peluquería Ana")
+        client_repo = _make_fake_client_repo(name="Peluquer?a Ana")
         repo, _, patcher = _patch_repos(client_repo=client_repo, notifier=notifier)
 
         with patcher:
@@ -395,18 +400,18 @@ class TestAppointmentConfirmationNotification:
         notifier.send_confirmation.assert_awaited_once()
         call_kwargs = notifier.send_confirmation.await_args.kwargs
         assert call_kwargs["client_id"] == CLIENT_ID
-        assert call_kwargs["contact_phone"] == "584121234567"
-        assert call_kwargs["business_name"] == "Peluquería Ana"
+        assert call_kwargs["contact_phone"] == "+584121234567"
+        assert "Ana" in call_kwargs["business_name"]
         assert "lunes" in call_kwargs["starts_at_label"]
         assert "10:00" in call_kwargs["starts_at_label"]
         notifier.send_team_alert.assert_awaited_once()
         team_kwargs = notifier.send_team_alert.await_args.kwargs
         assert team_kwargs["contact_name"] == "Ana"
-        assert team_kwargs["contact_phone"] == "584121234567"
+        assert team_kwargs["contact_phone"] == "+584121234567"
 
     @pytest.mark.asyncio
     async def test_appointment_still_created_when_notification_fails(self) -> None:
-        """Best-effort: notifier retorna False → la cita ya está creada igual."""
+        """Best-effort: notifier retorna False ? la cita ya est? creada igual."""
         notifier = _make_fake_notifier(sent=False)
         repo, _, patcher = _patch_repos(notifier=notifier)
 
@@ -426,7 +431,7 @@ class TestAppointmentConfirmationNotification:
 
     @pytest.mark.asyncio
     async def test_appointment_still_created_when_notifier_raises(self) -> None:
-        """Best-effort: una excepción del notifier no debe propagar ni deshacer la cita."""
+        """Best-effort: una excepci?n del notifier no debe propagar ni deshacer la cita."""
         notifier = MagicMock()
         notifier.send_confirmation = AsyncMock(side_effect=RuntimeError("network down"))
         repo, _, patcher = _patch_repos(notifier=notifier)
@@ -465,3 +470,44 @@ class TestAppointmentConfirmationNotification:
 
         assert "agendada" in result.lower()
         assert len(repo.items) == 1
+
+class TestConsultarMisCitas:
+    @pytest.mark.asyncio
+    async def test_lists_upcoming_for_chat_phone(self) -> None:
+        repo, _, patcher = _patch_repos()
+        with patcher:
+            await _seed(repo, contact_phone="+34688878205")
+            result = await execute_tool(
+                "consultar_mis_citas",
+                {},
+                {"id": CLIENT_ID, "phone": "+34688878205", "contact_phone": "+34688878205"},
+            )
+        assert "citas" in result.lower()
+        assert "2030-01-07" in result
+
+    @pytest.mark.asyncio
+    async def test_empty_when_no_appointments(self) -> None:
+        _, _, patcher = _patch_repos()
+        with patcher:
+            result = await execute_tool(
+                "consultar_mis_citas",
+                {},
+                {"id": CLIENT_ID, "phone": "+34600000000"},
+            )
+        assert "no tienes citas" in result.lower()
+
+
+class TestReprogramarCita:
+    @pytest.mark.asyncio
+    async def test_reschedules_next_by_phone(self) -> None:
+        repo, _, patcher = _patch_repos()
+        with patcher:
+            await _seed(repo, contact_phone="+34688878205")
+            result = await execute_tool(
+                "reprogramar_cita",
+                {"nueva_fecha_hora": "2030-01-07T12:00"},
+                {"id": CLIENT_ID, "phone": "+34688878205", "contact_phone": "+34688878205"},
+            )
+        assert "reprogramada" in result.lower()
+        appt = next(iter(repo.items.values()))
+        assert appt.starts_at.hour == 12

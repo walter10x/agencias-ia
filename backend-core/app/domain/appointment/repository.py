@@ -78,6 +78,17 @@ class AppointmentRepository(ABC):
         ...
 
     @abstractmethod
+    async def list_upcoming_by_phone(
+        self,
+        client_id: str,
+        contact_phone: str,
+        now: datetime,
+        limit: int = 5,
+    ) -> list[Appointment]:
+        """Próximas citas activas de un contacto (para '¿qué tengo agendado?')."""
+        ...
+
+    @abstractmethod
     async def find_reminder_candidates(
         self,
         starts_from: datetime,

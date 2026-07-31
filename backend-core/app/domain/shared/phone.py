@@ -26,3 +26,23 @@ def phones_match(a: str, b: str) -> bool:
     na = normalize_phone(a)
     nb = normalize_phone(b)
     return bool(na) and na == nb
+
+
+def phone_id_lookup_candidates(raw: str) -> list[str]:
+    """Variantes para matchear phone_number_id / YCloud `to` (+/- prefijo).
+
+    YCloud a menudo envía el número de negocio sin '+'; Meta usa IDs
+    numéricos. Probamos el valor crudo y las formas E.164 equivalentes.
+    """
+    s = (raw or "").strip()
+    if not s:
+        return []
+    out: list[str] = []
+    for candidate in (s, normalize_phone(s)):
+        if candidate and candidate not in out:
+            out.append(candidate)
+        if candidate.startswith("+"):
+            bare = candidate[1:]
+            if bare and bare not in out:
+                out.append(bare)
+    return out

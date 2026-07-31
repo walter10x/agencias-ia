@@ -185,6 +185,33 @@ class SupabaseAppointmentRepository(AppointmentRepository):
             return None
         return self._row_to_appointment(result.data[0])
 
+    async def list_upcoming_by_phone(
+        self,
+        client_id: str,
+        contact_phone: str,
+        now: datetime,
+        limit: int = 5,
+    ) -> list[Appointment]:
+        blocking = sorted(s.value for s in AppointmentStatus.blocking_statuses())
+        lim = max(1, min(limit, 20))
+        try:
+            result = await asyncio.to_thread(
+                lambda: self._db.table(self.TABLE)
+                .select("*")
+                .eq("client_id", client_id)
+                .eq("contact_phone", contact_phone)
+                .gte("ends_at", now.isoformat())
+                .in_("status", blocking)
+                .order("starts_at")
+                .limit(lim)
+                .execute()
+            )
+        except Exception as exc:
+            self._raise_domain_error(exc)
+            return []
+
+        return [self._row_to_appointment(row) for row in (result.data or [])]
+
     async def find_reminder_candidates(
         self,
         starts_from: datetime,

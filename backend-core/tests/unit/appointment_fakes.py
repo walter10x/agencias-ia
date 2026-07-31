@@ -83,17 +83,39 @@ class FakeAppointmentRepository(AppointmentRepository):
         contact_phone: str,
         now: datetime,
     ):
+        from app.domain.shared.phone import phones_match
+
         candidates = [
             a
             for a in self.items.values()
             if str(a.client_id) == client_id
-            and a.contact_phone == contact_phone
+            and phones_match(a.contact_phone, contact_phone)
             and a.is_active()
             and a.ends_at >= now
         ]
         if not candidates:
             return None
         return min(candidates, key=lambda a: a.starts_at)
+
+    async def list_upcoming_by_phone(
+        self,
+        client_id: str,
+        contact_phone: str,
+        now: datetime,
+        limit: int = 5,
+    ):
+        from app.domain.shared.phone import phones_match
+
+        candidates = [
+            a
+            for a in self.items.values()
+            if str(a.client_id) == client_id
+            and phones_match(a.contact_phone, contact_phone)
+            and a.is_active()
+            and a.ends_at >= now
+        ]
+        candidates.sort(key=lambda a: a.starts_at)
+        return candidates[: max(1, limit)]
 
     async def find_reminder_candidates(
         self,

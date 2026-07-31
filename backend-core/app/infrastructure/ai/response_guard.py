@@ -19,8 +19,14 @@ _BOOKING_CLAIM = re.compile(
     r"|\bcita\s+(?:confirmada|agendada|reservada)\b"
     r"|\bte\s+apunt[eéo]\b"
     r"|\bequipo\s+se\s+pondr[aá]\b"
+    r"|\bel\s+equipo\s+te\s+contactar[aá]\b"
+    r"|\bte\s+contactar[aá]\b.{0,40}\bconfirm"
     r"|\bnos\s+pondremos?\s+en\s+contacto\b"
     r"|\bqueda\s+(?:anotad|registrad|reservad|confirmad|agendad)"
+    r"|\bcomo\s+tu\s+preferencia\b"
+    r"|\btu\s+preferencia\b"
+    r"|\bpara\s+confirmar\s+la\s+cita\b"
+    r"|\btomamos?\s+nota\b"
     r")",
     re.IGNORECASE | re.DOTALL,
 )
@@ -86,12 +92,14 @@ def booking_confirmation_from_tool(content: str) -> str | None:
 
 
 def looks_like_booking_question(text: str) -> bool:
-    """True si el mensaje pide confirmación al cliente (aún no afirma que quedó)."""
+    """True si el mensaje pide confirmación de hueco al cliente.
+
+    No basta con cualquier '?': un soft-park + '¿Hay algo más?' no es
+    pregunta de confirmación de cita.
+    """
     t = (text or "").strip()
     if not t:
         return False
-    if "?" in t or "¿" in t:
-        return True
     return bool(_BOOKING_QUESTION.search(t))
 
 
@@ -123,7 +131,12 @@ def enforce_tool_truth(
     if not text:
         return text
 
-    # No tumbar el flujo de confirmación al cliente
+    # Soft-park / "ya está" inventado: siempre bloquea, aunque lleve
+    # un "¿algo más?" al final.
+    if _BOOKING_CLAIM.search(text):
+        return _BOOKING_FALLBACK
+
+    # Pregunta legítima de confirmación de hueco (¿Confirmamos…?).
     if looks_like_booking_question(text):
         if _EMAIL_CLAIM.search(text):
             cleaned = re.sub(
@@ -134,9 +147,6 @@ def enforce_tool_truth(
             ).strip()
             return cleaned or text
         return text
-
-    if _BOOKING_CLAIM.search(text):
-        return _BOOKING_FALLBACK
 
     if _EMAIL_CLAIM.search(text):
         cleaned = re.sub(

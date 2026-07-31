@@ -24,7 +24,6 @@ from app.domain.lead.repository import LeadRepository
 from app.domain.shared.errors import (
     AppointmentOverlapError,
     InvalidAppointmentError,
-    InvalidLeadError,
     OutsideBusinessHoursError,
 )
 from app.domain.shared.phone import normalize_phone
@@ -125,5 +124,6 @@ class CreateAppointmentUseCase:
                     source="appointment",
                 )
             )
-        except InvalidLeadError:
+        except Exception:
+            # CRM es best-effort: un fallo de lead NUNCA debe tumbar la cita.
             return

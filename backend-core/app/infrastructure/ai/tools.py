@@ -1,11 +1,8 @@
 """Tools nativas del agente IA (function calling).
 
-Las tools de agenda (consultar_disponibilidad, agendar_cita, cancelar_cita)
-se ejecutan LOCALMENTE invocando los use cases del módulo de agenda con el
-client_id del contexto del tenant — ya no se delega a n8n.
-
-Cualquier otra tool definida en la configuración del agente devuelve el
-mensaje de "no configurada" (comportamiento compatible con el anterior).
+Las tools de agenda se ejecutan LOCALMENTE con el client_id del tenant:
+consultar_disponibilidad, consultar_mis_citas, agendar_cita,
+reprogramar_cita, cancelar_cita.
 """
 
 from __future__ import annotations
@@ -18,21 +15,27 @@ from uuid import UUID
 
 from app.domain.agent.entity import AgentTool
 from app.domain.shared.errors import DomainError
+from app.domain.shared.phone import normalize_phone
 from app.domain.shared.value_objects import ClientId
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Definición de las tools nativas de agenda
-# ---------------------------------------------------------------------------
-
 CONSULTAR_DISPONIBILIDAD = "consultar_disponibilidad"
+CONSULTAR_MIS_CITAS = "consultar_mis_citas"
 AGENDAR_CITA = "agendar_cita"
+REPROGRAMAR_CITA = "reprogramar_cita"
 CANCELAR_CITA = "cancelar_cita"
 
-AGENDA_TOOLS = frozenset({CONSULTAR_DISPONIBILIDAD, AGENDAR_CITA, CANCELAR_CITA})
+AGENDA_TOOLS = frozenset(
+    {
+        CONSULTAR_DISPONIBILIDAD,
+        CONSULTAR_MIS_CITAS,
+        AGENDAR_CITA,
+        REPROGRAMAR_CITA,
+        CANCELAR_CITA,
+    }
+)
 
-# Schemas de parámetros (OpenAI function calling) por tool nativa
 _AGENDA_TOOL_PARAMETERS: dict[str, dict[str, Any]] = {
     CONSULTAR_DISPONIBILIDAD: {
         "type": "object",
@@ -48,41 +51,62 @@ _AGENDA_TOOL_PARAMETERS: dict[str, dict[str, Any]] = {
         },
         "required": ["fecha"],
     },
+    CONSULTAR_MIS_CITAS: {
+        "type": "object",
+        "properties": {
+            "telefono": {
+                "type": "string",
+                "description": "Opcional. Por defecto usa el WhatsApp del chat.",
+            },
+        },
+        "required": [],
+    },
     AGENDAR_CITA: {
         "type": "object",
         "properties": {
             "fecha_hora": {
                 "type": "string",
                 "description": (
-                    "Fecha y hora de inicio de la cita en formato ISO 8601 "
-                    "(YYYY-MM-DDTHH:MM), en hora local del negocio. Ej. 2026-07-10T15:00"
+                    "Fecha y hora de inicio en YYYY-MM-DDTHH:MM (hora local del negocio)."
                 ),
             },
             "nombre": {
                 "type": "string",
-                "description": "Nombre de la persona que agenda la cita",
+                "description": "Nombre de la persona que agenda",
             },
             "telefono": {
                 "type": "string",
-                "description": "Teléfono de contacto (WhatsApp) de la persona",
+                "description": "Teléfono WhatsApp (opcional si ya está en contexto)",
             },
             "notas": {
                 "type": "string",
-                "description": "Notas opcionales (motivo de la cita, servicio, etc.)",
+                "description": "Notas opcionales",
             },
         },
         "required": ["fecha_hora", "nombre"],
+    },
+    REPROGRAMAR_CITA: {
+        "type": "object",
+        "properties": {
+            "referencia": {
+                "type": "string",
+                "description": (
+                    "ID de la cita o teléfono del contacto (usa su próxima cita)."
+                ),
+            },
+            "nueva_fecha_hora": {
+                "type": "string",
+                "description": "Nueva fecha/hora YYYY-MM-DDTHH:MM hora local",
+            },
+        },
+        "required": ["nueva_fecha_hora"],
     },
     CANCELAR_CITA: {
         "type": "object",
         "properties": {
             "referencia": {
                 "type": "string",
-                "description": (
-                    "Referencia de la cita a cancelar: el ID de la cita "
-                    "(si se conoce) o el teléfono del contacto para cancelar "
-                    "su próxima cita"
-                ),
+                "description": "ID de la cita o teléfono del contacto",
             },
         },
         "required": ["referencia"],
@@ -254,8 +278,12 @@ async def execute_tool(
     try:
         if tool_name == CONSULTAR_DISPONIBILIDAD:
             return await _consultar_disponibilidad(client_id, arguments)
+        if tool_name == CONSULTAR_MIS_CITAS:
+            return await _consultar_mis_citas(client_id, arguments, context)
         if tool_name == AGENDAR_CITA:
             return await _agendar_cita(client_id, arguments, context)
+        if tool_name == REPROGRAMAR_CITA:
+            return await _reprogramar_cita(client_id, arguments, context)
         return await _cancelar_cita(client_id, arguments, context)
     except DomainError as e:
         return f"No se pudo completar la operación: {e.message}"
@@ -296,6 +324,42 @@ async def _consultar_disponibilidad(client_id: str, arguments: dict[str, Any]) -
     )
 
 
+async def _consultar_mis_citas(
+    client_id: str,
+    arguments: dict[str, Any],
+    context: dict[str, Any],
+) -> str:
+    telefono = str(
+        arguments.get("telefono")
+        or context.get("contact_phone")
+        or context.get("phone")
+        or ""
+    ).strip()
+    telefono = normalize_phone(telefono) or telefono
+    if not telefono:
+        return "No tengo el teléfono del chat para buscar tus citas."
+
+    repo = _build_appointment_repo()
+    upcoming = await repo.list_upcoming_by_phone(
+        client_id=client_id,
+        contact_phone=telefono,
+        now=datetime.now(timezone.utc),
+        limit=5,
+    )
+    if not upcoming:
+        return (
+            "No tienes citas próximas agendadas. "
+            "Si quieres, te ofrezco huecos libres."
+        )
+
+    lines = []
+    for a in upcoming:
+        lines.append(
+            f"- {a.starts_at.isoformat()} ({a.status.value}) ref={a.id}"
+        )
+    return "Tus próximas citas:\n" + "\n".join(lines)
+
+
 async def _agendar_cita(
     client_id: str,
     arguments: dict[str, Any],
@@ -321,6 +385,8 @@ async def _agendar_cita(
             "Falta el teléfono de contacto. Pide al cliente su número "
             "de teléfono para confirmar la cita."
         )
+
+    telefono = normalize_phone(telefono) or telefono
 
     uc = CreateAppointmentUseCase(
         repo=_build_appointment_repo(),
@@ -399,6 +465,81 @@ async def _notify_appointment_booked(
         )
 
 
+async def _resolve_appointment_id(
+    repo: Any,
+    client_id: str,
+    referencia: str,
+) -> str | None:
+    ref = (referencia or "").strip()
+    if not ref:
+        return None
+    try:
+        UUID(ref)
+        return ref
+    except ValueError:
+        phone = normalize_phone(ref) or ref
+        appointment = await repo.find_next_by_phone(
+            client_id=client_id,
+            contact_phone=phone,
+            now=datetime.now(timezone.utc),
+        )
+        return str(appointment.id) if appointment else None
+
+
+async def _reprogramar_cita(
+    client_id: str,
+    arguments: dict[str, Any],
+    context: dict[str, Any],
+) -> str:
+    from app.application.appointment.reschedule_appointment import (
+        RescheduleAppointmentUseCase,
+    )
+    from app.application.dtos import RescheduleAppointmentInput
+    from app.domain.shared.errors import AppointmentNotFoundError
+
+    nueva = str(
+        arguments.get("nueva_fecha_hora") or arguments.get("fecha_hora") or ""
+    ).strip()
+    if not nueva:
+        return "Falta 'nueva_fecha_hora' (YYYY-MM-DDTHH:MM)."
+
+    referencia = str(
+        arguments.get("referencia")
+        or arguments.get("input")
+        or context.get("contact_phone")
+        or context.get("phone")
+        or ""
+    ).strip()
+
+    repo = _build_appointment_repo()
+    appointment_id = await _resolve_appointment_id(repo, client_id, referencia)
+    if not appointment_id:
+        return (
+            "No encontré una cita próxima para reprogramar. "
+            "Confirma el día actual o la referencia."
+        )
+
+    uc = RescheduleAppointmentUseCase(
+        repo=repo,
+        schedule_repo=_build_schedule_repo(),
+    )
+    try:
+        output = await uc.execute(
+            RescheduleAppointmentInput(
+                client_id=client_id,
+                appointment_id=appointment_id,
+                new_starts_at=nueva,
+            )
+        )
+    except AppointmentNotFoundError:
+        return f"No se encontró la cita '{referencia}' para este negocio."
+
+    return (
+        f"Cita reprogramada correctamente al {output.starts_at} "
+        f"(referencia: {output.id}). Confirma el nuevo horario al cliente."
+    )
+
+
 async def _cancelar_cita(
     client_id: str,
     arguments: dict[str, Any],
@@ -419,24 +560,12 @@ async def _cancelar_cita(
         return "Falta el parámetro 'referencia' (ID de la cita o teléfono del contacto)."
 
     repo = _build_appointment_repo()
-    appointment_id: str | None = None
-
-    try:
-        UUID(referencia)
-        appointment_id = referencia
-    except ValueError:
-        # No es un UUID: tratar la referencia como teléfono del contacto
-        appointment = await repo.find_next_by_phone(
-            client_id=client_id,
-            contact_phone=referencia,
-            now=datetime.now(timezone.utc),
+    appointment_id = await _resolve_appointment_id(repo, client_id, referencia)
+    if not appointment_id:
+        return (
+            f"No se encontró ninguna cita próxima para '{referencia}'. "
+            "Verifica el teléfono o el ID de la cita."
         )
-        if appointment is None:
-            return (
-                f"No se encontró ninguna cita próxima para '{referencia}'. "
-                "Verifica el teléfono o el ID de la cita."
-            )
-        appointment_id = str(appointment.id)
 
     uc = CancelAppointmentUseCase(repo=repo)
     try:
