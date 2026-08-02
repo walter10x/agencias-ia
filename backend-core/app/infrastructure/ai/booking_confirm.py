@@ -473,12 +473,7 @@ async def _book_slot(
     content = str(result or "")
     if not tool_result_succeeded("agendar_cita", content):
         logger.warning("booking_confirm: tool failed: %s", content[:200])
-        if len(content.strip()) > 10 and not content.strip().startswith("{"):
-            return content.strip()
-        return (
-            "Ese hueco ya no está libre. "
-            "Dime otro día de lunes a viernes y te busco disponibilidad."
-        )
+        return _humanize_tool_error(content)
 
     return booking_confirmation_from_tool(content) or _format_success(slot)
 
@@ -529,3 +524,160 @@ async def try_confirm_pending_booking(
         return await _book_slot(slot, client_context, reason="affirmation")
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# Mis citas / cancelar / reprogramar (mismo estilo determinista)
+# ---------------------------------------------------------------------------
+
+_LIST_INTENT = re.compile(
+    r"(?:"
+    r"qu[eé]\s+tengo\s+agendad"
+    r"|mis\s+citas?"
+    r"|para\s+cu[aá]ndo\s+(?:es\s+)?mi\s+cita"
+    r"|cu[aá]ndo\s+(?:es|tengo)\s+mi\s+cita"
+    r"|tengo\s+(?:alguna\s+)?cita"
+    r"|ver\s+mi\s+cita"
+    r")",
+    re.IGNORECASE,
+)
+
+_CANCEL_INTENT = re.compile(
+    r"(?:"
+    r"cancel\w*"
+    r"|anul\w*"
+    r"|borra(?:r|me)?\s+(?:la\s+)?cita"
+    r"|no\s+(?:puedo|voy\s+a\s+poder)\s+(?:ir|asistir)"
+    r"|quita(?:me)?\s+(?:la\s+)?cita"
+    r")",
+    re.IGNORECASE,
+)
+
+_RESCHEDULE_INTENT = re.compile(
+    r"(?:"
+    r"reprogram\w*"
+    r"|cambiar?\s+(?:la\s+)?cita"
+    r"|cambiar?\s+(?:la\s+)?hora"
+    r"|cambiar?\s+(?:el\s+)?d[ií]a"
+    r"|pas[aá](?:me|r|nos)?\s+(?:la\s+cita\s+)?(?:al|a\s+el|para\s+el|a)\b"
+    r"|mu[eé]ve(?:me)?\s+(?:la\s+)?cita"
+    r"|otro\s+(?:d[ií]a|horario|hueco)"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _humanize_tool_error(content: str) -> str:
+    low = (content or "").lower()
+    if "overlap" in low or "ocupad" in low:
+        return (
+            "Ese hueco ya está ocupado. "
+            "Dime otra hora o día de lunes a viernes."
+        )
+    if "outside business hours" in low or "fuera de horario" in low:
+        return (
+            "Esa hora está fuera de nuestro horario (lunes a viernes). "
+            "Prueba otra hora laboral."
+        )
+    if "past" in low or "pasado" in low:
+        return "Esa fecha/hora ya pasó. Dime un hueco futuro."
+    return content.strip() if content.strip() else (
+        "No pude completar la operación. Prueba de nuevo con día y hora."
+    )
+
+
+async def try_list_appointments(client_context: dict[str, Any]) -> str:
+    result = await execute_tool("consultar_mis_citas", {}, client_context)
+    text = str(result or "").strip()
+    if not text or text.lower().startswith("error"):
+        return "No pude consultar tus citas ahora. Inténtalo en un momento."
+    return text
+
+
+async def try_cancel_appointment(client_context: dict[str, Any]) -> str:
+    result = await execute_tool("cancelar_cita", {}, client_context)
+    text = str(result or "").strip()
+    low = text.lower()
+    if "cancelada correctamente" in low:
+        return (
+            f"✅ {text.split('Inform')[0].strip()}"
+            if "Inform" in text
+            else f"✅ {text}"
+        )
+    if "no se encontró" in low or "no encontr" in low:
+        return "No tienes ninguna cita próxima para cancelar."
+    return _humanize_tool_error(text)
+
+
+async def try_reschedule_appointment(
+    user_text: str,
+    history: list[dict[str, Any]],
+    client_context: dict[str, Any],
+) -> str | None:
+    """Reprograma si el mensaje trae (o el historial + hora) un nuevo hueco."""
+    raw = _strip_user_wrapper(user_text)
+    slot = extract_slot_from_text(raw)
+    if slot is None:
+        time_only = extract_time_only(raw)
+        if time_only is not None:
+            day = extract_pending_day(history)
+            if day is not None:
+                slot = combine_day_and_time(day, time_only[0], time_only[1])
+    if slot is None:
+        # Pidió reprogramar pero sin día/hora → pedir dato, no LLM
+        return (
+            "Claro. Dime el nuevo día y hora, por ejemplo: martes a las 11"
+        )
+
+    fecha_hora = slot.strftime("%Y-%m-%dT%H:%M")
+    logger.info("booking_confirm: reprogramar → %s", fecha_hora)
+    result = await execute_tool(
+        "reprogramar_cita",
+        {"nueva_fecha_hora": fecha_hora},
+        client_context,
+    )
+    text = str(result or "").strip()
+    low = text.lower()
+    if "reprogramada correctamente" in low:
+        return (
+            f"✅ Cita reprogramada al {slot.strftime('%Y-%m-%d %H:%M')}. "
+            "Queda actualizada en la agenda."
+        )
+    if "no encontr" in low:
+        return (
+            "No tienes una cita próxima para cambiar. "
+            "Si quieres, agenda una nueva diciendo día y hora."
+        )
+    return _humanize_tool_error(text)
+
+
+async def try_handle_agenda_intent(
+    user_text: str,
+    history: list[dict[str, Any]],
+    client_context: dict[str, Any],
+) -> str | None:
+    """Enruta intents de agenda sin depender del LLM.
+
+    Orden: cancelar → mis citas → reprogramar → agendar/confirmar.
+    """
+    raw = _strip_user_wrapper(user_text)
+    if not raw:
+        return None
+
+    # Cancelar (antes que list, por si dicen "cancelar mi cita")
+    if _CANCEL_INTENT.search(raw) and not _RESCHEDULE_INTENT.search(raw):
+        # Evitar "no canceles" raros: si niegan, dejar al LLM
+        if re.search(r"\bno\s+cancel", raw, re.I):
+            return None
+        return await try_cancel_appointment(client_context)
+
+    if _LIST_INTENT.search(raw) and not _RESCHEDULE_INTENT.search(raw):
+        return await try_list_appointments(client_context)
+
+    if _RESCHEDULE_INTENT.search(raw):
+        return await try_reschedule_appointment(raw, history, client_context)
+
+    # Reprogramar implícito: "pásame al martes a las 11" ya cubierto por intent.
+    # Si solo trae nuevo hueco y hay cita… lo deja el flujo de agendar (puede
+    # solapar). Mejor: agendar/confirm path existente.
+    return await try_confirm_pending_booking(raw, history, client_context)

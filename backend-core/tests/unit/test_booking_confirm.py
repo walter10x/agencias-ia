@@ -242,3 +242,89 @@ async def test_affirmation_without_slot_asks_day_hour() -> None:
     )
     assert reply is not None
     assert "lunes a las 10" in reply.lower()
+
+
+@pytest.mark.asyncio
+async def test_list_mis_citas_intent() -> None:
+    from app.infrastructure.ai.booking_confirm import try_handle_agenda_intent
+
+    with patch(
+        "app.infrastructure.ai.booking_confirm.execute_tool",
+        new_callable=AsyncMock,
+        return_value="Tienes 1 cita: lunes 10:00 (ref=abc)",
+    ) as mock_tool:
+        reply = await try_handle_agenda_intent(
+            "¿qué tengo agendado?",
+            [],
+            {"id": "x", "phone": "+34600000000"},
+        )
+    assert reply is not None
+    assert "cita" in reply.lower()
+    mock_tool.assert_awaited_once()
+    assert mock_tool.await_args.args[0] == "consultar_mis_citas"
+
+
+@pytest.mark.asyncio
+async def test_cancel_intent() -> None:
+    from app.infrastructure.ai.booking_confirm import try_handle_agenda_intent
+
+    with patch(
+        "app.infrastructure.ai.booking_confirm.execute_tool",
+        new_callable=AsyncMock,
+        return_value=(
+            "Cita del 2026-08-03T10:00:00+02:00 cancelada correctamente "
+            "(referencia: abc). Informa al cliente."
+        ),
+    ) as mock_tool:
+        reply = await try_handle_agenda_intent(
+            "cancelar mi cita",
+            [],
+            {"id": "x", "phone": "+34600000000"},
+        )
+    assert reply is not None
+    assert "✅" in reply
+    assert mock_tool.await_args.args[0] == "cancelar_cita"
+
+
+@pytest.mark.asyncio
+async def test_reschedule_intent() -> None:
+    from app.infrastructure.ai.booking_confirm import try_handle_agenda_intent
+
+    with patch(
+        "app.infrastructure.ai.booking_confirm.execute_tool",
+        new_callable=AsyncMock,
+        return_value=(
+            "Cita reprogramada correctamente al 2026-08-04T11:00:00+02:00 "
+            "(referencia: abc). Confirma el nuevo horario al cliente."
+        ),
+    ) as mock_tool:
+        reply = await try_handle_agenda_intent(
+            "reprograma al martes a las 11",
+            [],
+            {"id": "x", "phone": "+34600000000"},
+        )
+    assert reply is not None
+    assert "✅" in reply
+    assert mock_tool.await_args.args[0] == "reprogramar_cita"
+    assert "T11:00" in mock_tool.await_args.args[1]["nueva_fecha_hora"]
+
+
+@pytest.mark.asyncio
+async def test_overlap_message_in_spanish() -> None:
+    from app.infrastructure.ai.booking_confirm import try_handle_agenda_intent
+
+    with patch(
+        "app.infrastructure.ai.booking_confirm.execute_tool",
+        new_callable=AsyncMock,
+        return_value=(
+            "No se pudo completar la operación: "
+            "Appointment overlaps with an existing appointment"
+        ),
+    ):
+        reply = await try_handle_agenda_intent(
+            "quiero el lunes a las 10",
+            [],
+            {"id": "x", "phone": "+34600000000"},
+        )
+    assert reply is not None
+    assert "ocupado" in reply.lower()

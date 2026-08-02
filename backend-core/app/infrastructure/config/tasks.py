@@ -20,7 +20,7 @@ from app.domain.shared.errors import DomainError
 from app.domain.shared.value_objects import AgentId
 from app.infrastructure.ai.adapter_factory import get_llm_adapter
 from app.infrastructure.ai.agent_graph import run_agent
-from app.infrastructure.ai.booking_confirm import try_confirm_pending_booking
+from app.infrastructure.ai.booking_confirm import try_handle_agenda_intent
 from app.infrastructure.ai.prompts import build_system_prompt, build_user_message
 from app.infrastructure.ai.tools import agent_tools_to_openai_format
 from app.infrastructure.config.celery_app import celery_app
@@ -121,13 +121,11 @@ def process_whatsapp_message(
         if conversation is not None:
             client_context["conversation_id"] = str(conversation.id)
 
-        # --- Paso 7: Confirmar cita en duro (sí + hueco propuesto) o LLM ---
-        # Los bots serios no dejan el «sí» solo al modelo: si el bot ya preguntó
-        # «¿Confirmamos el lunes…?» y el cliente afirma, se llama agendar_cita.
+        # --- Paso 7: Agenda en duro (agendar/listar/cancelar/reprogramar) o LLM ---
         loop = asyncio.new_event_loop()
         try:
             reply = loop.run_until_complete(
-                try_confirm_pending_booking(
+                try_handle_agenda_intent(
                     user_text=message,
                     history=history or [],
                     client_context=client_context,
@@ -135,7 +133,7 @@ def process_whatsapp_message(
             )
             if reply:
                 logger.info(
-                    "Deterministic booking confirmation for phone=%s…",
+                    "Deterministic agenda intent for phone=%s…",
                     phone[:4],
                 )
             else:
