@@ -162,6 +162,65 @@ async def test_try_book_from_user_day_time() -> None:
 
 
 @pytest.mark.asyncio
+async def test_try_book_time_only_with_history_day() -> None:
+    """Caso real Mathias: 'lunes en la mañana' → bot pide hora → '10 am'."""
+    history = [
+        {
+            "role": "user",
+            "content": "Quiero agendar una cita para el lunes en la mañana",
+        },
+        {
+            "role": "assistant",
+            "content": (
+                "¡Hola Mathias! El lunes sería el 3 de agosto. "
+                "¿Qué hora exacta de la mañana te conviene? Así la agendo de una vez."
+            ),
+        },
+    ]
+    ctx = {
+        "id": "a1111111-1111-1111-1111-111111111111",
+        "phone": "+34688878205",
+        "contact_phone": "+34688878205",
+        "contact_name": "Mathias",
+    }
+    ok = (
+        "Cita agendada correctamente para Mathias "
+        "el 2026-08-03T10:00:00+02:00 (referencia: abc-123). "
+        "Confirma al cliente la fecha y hora."
+    )
+    with patch(
+        "app.infrastructure.ai.booking_confirm.execute_tool",
+        new_callable=AsyncMock,
+        return_value=ok,
+    ) as mock_tool:
+        reply = await try_confirm_pending_booking("10 am", history, ctx)
+
+    assert reply is not None
+    assert "✅" in reply
+    mock_tool.assert_awaited_once()
+    assert "2026-08-03T10:00" in mock_tool.await_args.args[1]["fecha_hora"]
+
+
+@pytest.mark.parametrize(
+    "text,hour",
+    [
+        ("10 am", 10),
+        ("10am", 10),
+        ("10:00", 10),
+        ("a las 10", 10),
+        ("11:30 am", 11),
+        ("3 pm", 15),
+    ],
+)
+def test_extract_time_only(text: str, hour: int) -> None:
+    from app.infrastructure.ai.booking_confirm import extract_time_only
+
+    got = extract_time_only(text)
+    assert got is not None
+    assert got[0] == hour
+
+
+@pytest.mark.asyncio
 async def test_try_confirm_skips_without_affirmation() -> None:
     history = [
         {"role": "assistant", "content": "¿Confirmamos el lunes 3 de agosto a las 10:00?"},

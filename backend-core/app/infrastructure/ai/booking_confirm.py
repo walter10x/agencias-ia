@@ -116,6 +116,21 @@ _SLOT_WEEKDAY_HOUR = re.compile(
 
 _FALLBACK_GUARD = re.compile(r"todav[ií]a\s+no\s+est[aá]\s+confirmada", re.I)
 
+# Solo hora: «10 am», «10:00», «a las 10», «10am»
+_TIME_ONLY = re.compile(
+    r"^\s*(?:a\s+las?\s+|las?\s+)?"
+    r"(\d{1,2})(?::(\d{2}))?\s*"
+    r"(am|pm|h|hrs?|horas?)?\s*$",
+    re.IGNORECASE,
+)
+
+_PENDING_DAY_MONTH = re.compile(
+    rf"(\d{{1,2}})\s+de\s+({_MONTH_ALT})",
+    re.IGNORECASE,
+)
+_PENDING_WEEKDAY = re.compile(rf"\b({_WEEKDAY_ALT})\b", re.IGNORECASE)
+_PENDING_TOMORROW = re.compile(r"\bma[nñ]ana\b", re.IGNORECASE)
+
 
 def _strip_user_wrapper(text: str) -> str:
     raw = (text or "").strip()
@@ -306,8 +321,86 @@ def extract_slot_from_text(content: str) -> datetime | None:
     return None
 
 
+def extract_time_only(text: str) -> tuple[int, int] | None:
+    """Si el mensaje es solo una hora («10 am»), devuelve (hour, minute)."""
+    raw = _strip_user_wrapper(text)
+    if not raw or len(raw) > 24:
+        return None
+    m = _TIME_ONLY.match(raw)
+    if not m:
+        return None
+    hour = int(m.group(1))
+    minute = int(m.group(2) or "0")
+    ampm = (m.group(3) or "").lower()
+    if ampm in ("h", "hr", "hrs", "hora", "horas"):
+        ampm = ""
+    if ampm not in ("am", "pm"):
+        ampm = _ampm_in(raw) or ""
+    hour_n = _normalize_hour(hour, ampm or None)
+    if hour_n is None or not (7 <= hour_n <= 21):
+        return None
+    if minute < 0 or minute > 59:
+        return None
+    return hour_n, minute
+
+
+def extract_pending_day(history: list[dict[str, Any]]) -> date | None:
+    """Día pendiente del chat (lunes / 3 de agosto / mañana), sin hora."""
+    now = datetime.now(_TZ)
+    for msg in reversed(history or []):
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("role") not in ("assistant", "user"):
+            continue
+        content = str(msg.get("content") or "")
+        if not content.strip() or _FALLBACK_GUARD.search(content):
+            continue
+
+        m = _PENDING_DAY_MONTH.search(content)
+        if m:
+            day = int(m.group(1))
+            month = _MONTHS.get(m.group(2).lower())
+            if month is None:
+                continue
+            try:
+                candidate = date(now.year, month, day)
+            except ValueError:
+                continue
+            if candidate < now.date():
+                try:
+                    candidate = date(now.year + 1, month, day)
+                except ValueError:
+                    continue
+            return candidate
+
+        if _PENDING_TOMORROW.search(content):
+            return now.date() + timedelta(days=1)
+
+        m = _PENDING_WEEKDAY.search(content)
+        if m:
+            wd = _weekday_index(m.group(1))
+            if wd is None:
+                continue
+            days_ahead = (wd - now.weekday()) % 7
+            candidate = now.date() + timedelta(days=days_ahead)
+            # Si es hoy y ya pasó la mañana laboral, el siguiente de esa semana
+            # se decide al combinar con la hora.
+            return candidate
+
+    return None
+
+
+def combine_day_and_time(day: date, hour: int, minute: int) -> datetime:
+    """Junta día + hora; si ya pasó, empuja 7 días cuando el día era weekday relativo."""
+    now = datetime.now(_TZ)
+    dt = datetime.combine(day, time(hour, minute), tzinfo=_TZ)
+    if dt <= now:
+        dt = dt + timedelta(days=7)
+    return dt
+
+
 def extract_pending_slot(history: list[dict[str, Any]]) -> datetime | None:
-    """Busca hueco en mensajes recientes (asistente y usuario)."""
+    """Busca hueco completo en mensajes recientes (asistente y usuario)."""
     for msg in reversed(history or []):
         if not isinstance(msg, dict):
             continue
@@ -408,7 +501,20 @@ async def try_confirm_pending_booking(
         if slot is not None:
             return await _book_slot(slot, client_context, reason="user_message_slot")
 
-    # 2) Sí / ok → hueco del historial
+    # 2) Solo hora («10 am») + día pendiente en el historial («lunes» / «3 de agosto»)
+    time_only = extract_time_only(raw)
+    if time_only is not None:
+        pending_day = extract_pending_day(history)
+        if pending_day is not None:
+            hour, minute = time_only
+            slot = combine_day_and_time(pending_day, hour, minute)
+            return await _book_slot(slot, client_context, reason="time_plus_history_day")
+        logger.info("booking_confirm: time-only without pending day in history")
+        return (
+            "Dime el día junto con la hora, por ejemplo: lunes a las 10"
+        )
+
+    # 3) Sí / ok → hueco del historial
     if is_user_affirmation(raw):
         slot = extract_pending_slot(history)
         if slot is None:
